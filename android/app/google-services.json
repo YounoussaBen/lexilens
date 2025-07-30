@@ -1,0 +1,54 @@
+{
+  "project_info": {
+    "project_number": "75188540088",
+    "project_id": "lexilens-f0db4",
+    "storage_bucket": "lexilens-f0db4.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:75188540088:android:38f6b9682d899b0b4d5a4d",
+        "android_client_info": {
+          "package_name": "com.lexilens.lexilens"
+        }
+      },
+      "oauth_client": [
+        {
+          "client_id": "75188540088-2hf32f26ck77t4koibcttula1k2k9vaf.apps.googleusercontent.com",
+          "client_type": 1,
+          "android_info": {
+            "package_name": "com.lexilens.lexilens",
+            "certificate_hash": "8e1485cdb58422f73efca84e3ecbe41cf3db1118"
+          }
+        },
+        {
+          "client_id": "75188540088-a7np64oo2ojo84l9hdben5nl8ir5k3ra.apps.googleusercontent.com",
+          "client_type": 3
+        }
+      ],
+      "api_key": [
+        {
+          "current_key": "AIzaSyAJltOPXRUlm-pwreXbzmEmNg08mRBg3CQ"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": [
+            {
+              "client_id": "75188540088-a7np64oo2ojo84l9hdben5nl8ir5k3ra.apps.googleusercontent.com",
+              "client_type": 3
+            },
+            {
+              "client_id": "75188540088-grpm1h2589vihui305ccsgka9t0r7cl4.apps.googleusercontent.com",
+              "client_type": 2,
+              "ios_info": {
+                "bundle_id": "com.lexilens.lexilens"
+              }
+            }
+          ]
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}
