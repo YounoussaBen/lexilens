@@ -104,6 +104,7 @@ flutter:
     - assets/labelmap.txt
     - assets/detect.tflite
     - assets/logo.png
+    - assets/icons/google.png
     - .env
 
   # An image asset can refer to one or more resolution-specific "variants", see
