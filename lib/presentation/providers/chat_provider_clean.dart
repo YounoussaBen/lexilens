@@ -118,8 +118,8 @@ class ChatNotifier extends StateNotifier<ChatState> {
           .map((msg) => '${msg.isUser ? "User" : "Assistant"}: ${msg.text}')
           .toList();
 
-      // Add a placeholder message with loading state
-      final loadingMessage = ChatMessage(
+      // Add a placeholder message for streaming
+      final streamingMessage = ChatMessage(
         text: "",
         displayText: "",
         fullText: "",
@@ -128,8 +128,8 @@ class ChatNotifier extends StateNotifier<ChatState> {
         isStreaming: true,
       );
 
-      final messages = [...state.messages, loadingMessage];
-      state = state.copyWith(messages: messages, isLoading: true);
+      final messages = [...state.messages, streamingMessage];
+      state = state.copyWith(messages: messages);
 
       // Get AI response
       final aiResponse = await _geminiService.generateChatResponse(
@@ -137,8 +137,7 @@ class ChatNotifier extends StateNotifier<ChatState> {
         conversationHistory: conversationHistory,
       );
 
-      // Update loading state and start streaming
-      state = state.copyWith(isLoading: false);
+      // Stream the response
       await _streamResponse(aiResponse, messages.length - 1);
     } catch (e) {
       // Handle errors
@@ -166,8 +165,8 @@ class ChatNotifier extends StateNotifier<ChatState> {
   }
 
   Future<void> _streamResponse(String fullResponse, int messageIndex) async {
-    const charactersPerUpdate = 4; // Increased from 2 for faster streaming
-    const updateIntervalMs = 25; // Reduced from 50ms for faster updates
+    const charactersPerUpdate = 2;
+    const updateIntervalMs = 50;
 
     final messages = List<ChatMessage>.from(state.messages);
     final messageToUpdate = messages[messageIndex];
@@ -216,10 +215,6 @@ class ChatNotifier extends StateNotifier<ChatState> {
     } catch (e) {
       // Handle TTS errors silently
     }
-  }
-
-  void sendQuickMessage(String message) {
-    addUserMessage(message);
   }
 }
 

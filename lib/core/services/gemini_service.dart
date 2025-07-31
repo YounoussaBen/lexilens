@@ -3,19 +3,23 @@ import 'package:flutter_dotenv/flutter_dotenv.dart';
 import 'package:http/http.dart' as http;
 
 class GeminiService {
-  static const String _baseUrl = 'https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent';
-  
+  static const String _baseUrl =
+      'https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent';
+
   late final String _apiKey;
-  
+
   GeminiService() {
     _apiKey = dotenv.env['GEMINI_API_KEY'] ?? '';
     if (_apiKey.isEmpty) {
       throw Exception('GEMINI_API_KEY not found in .env file');
     }
   }
-  
+
   /// Generate chat response from Gemini
-  Future<String> generateChatResponse(String userMessage, {List<String>? conversationHistory}) async {
+  Future<String> generateChatResponse(
+    String userMessage, {
+    List<String>? conversationHistory,
+  }) async {
     try {
       final prompt = _buildChatPrompt(userMessage, conversationHistory);
       return await _callGeminiAPI(prompt);
@@ -23,7 +27,7 @@ class GeminiService {
       throw Exception('Failed to generate chat response: $e');
     }
   }
-  
+
   /// Generate word of the day with definition, pronunciation, and examples
   Future<WordOfTheDay> generateWordOfTheDay() async {
     try {
@@ -41,18 +45,21 @@ Generate a word of the day for English vocabulary learning. Provide the response
 
 Choose an interesting, useful word that would be valuable for English learners. Make sure the pronunciation is in IPA format and the example sentence clearly demonstrates the word's usage.
       ''';
-      
+
       final response = await _callGeminiAPI(prompt);
-      return WordOfTheDay.fromJson(jsonDecode(_extractJsonFromResponse(response)));
+      return WordOfTheDay.fromJson(
+        jsonDecode(_extractJsonFromResponse(response)),
+      );
     } catch (e) {
       throw Exception('Failed to generate word of the day: $e');
     }
   }
-  
+
   /// Generate vocabulary quiz based on provided words
   Future<List<QuizQuestion>> generateVocabularyQuiz(List<String> words) async {
     try {
-      final prompt = '''
+      final prompt =
+          '''
 Create a vocabulary quiz with 5 multiple choice questions based on these words: ${words.join(', ')}.
 Provide the response in JSON format as an array of questions:
 [
@@ -66,97 +73,112 @@ Provide the response in JSON format as an array of questions:
 
 Make the questions engaging and educational, with clear explanations.
       ''';
-      
+
       final response = await _callGeminiAPI(prompt);
-      final List<dynamic> questionsJson = jsonDecode(_extractJsonFromResponse(response));
+      final List<dynamic> questionsJson = jsonDecode(
+        _extractJsonFromResponse(response),
+      );
       return questionsJson.map((q) => QuizQuestion.fromJson(q)).toList();
     } catch (e) {
       throw Exception('Failed to generate vocabulary quiz: $e');
     }
   }
-  
-  /// Build chat prompt with context
-  String _buildChatPrompt(String userMessage, List<String>? conversationHistory) {
-    final context = '''
-You are LexiLens AI, a friendly vocabulary tutor for English learners. Your role is to:
-- Help users learn new vocabulary words
-- Explain word meanings, usage, and pronunciation
-- Provide examples and practice exercises
-- Answer questions about English grammar and vocabulary
-- Be encouraging and educational
 
-Keep responses conversational, helpful, and focused on vocabulary learning.
+  /// Build chat prompt with context
+  String _buildChatPrompt(
+    String userMessage,
+    List<String>? conversationHistory,
+  ) {
+    final context = '''
+You are LexiLens AI, a passionate and knowledgeable vocabulary tutor for English learners. Your role is to:
+- Help users learn new vocabulary words with enthusiasm and depth
+- Explain word meanings, usage, pronunciation, and etymology in an engaging way
+- Provide rich examples, synonyms, antonyms, and interesting facts about words
+- Share fascinating origins, historical context, and cultural connections
+- Answer questions about English grammar and vocabulary
+- Create practice exercises and memorable learning experiences
+- Be encouraging, educational, and conversational
+
+When discussing a specific word, provide comprehensive information including:
+- Multiple definitions and contexts where it's used
+- Etymology and historical origins
+- Interesting synonyms and antonyms
+- Memorable example sentences
+- Cultural or literary references
+- Tips for pronunciation and usage
+- Fun facts or connections to other languages
+
+Keep responses well-formatted with markdown for better readability, conversational, and focused on making vocabulary learning engaging and memorable.
     ''';
-    
+
     String prompt = context;
-    
+
     if (conversationHistory != null && conversationHistory.isNotEmpty) {
-      prompt += '\n\nConversation history:\n${conversationHistory.join('\n')}\n\n';
+      prompt +=
+          '\n\nConversation history:\n${conversationHistory.join('\n')}\n\n';
     }
-    
+
     prompt += 'User: $userMessage\nLexiLens AI:';
-    
+
     return prompt;
   }
-  
+
   /// Call Gemini API with the given prompt
   Future<String> _callGeminiAPI(String prompt) async {
     final uri = Uri.parse('$_baseUrl?key=$_apiKey');
-    
+
     final requestBody = {
       'contents': [
         {
           'parts': [
-            {'text': prompt}
-          ]
-        }
+            {'text': prompt},
+          ],
+        },
       ],
       'generationConfig': {
         'temperature': 0.7,
         'topK': 40,
         'topP': 0.95,
         'maxOutputTokens': 1024,
-      }
+      },
     };
-    
+
     final response = await http.post(
       uri,
-      headers: {
-        'Content-Type': 'application/json',
-      },
+      headers: {'Content-Type': 'application/json'},
       body: jsonEncode(requestBody),
     );
-    
+
     if (response.statusCode == 200) {
       final responseData = jsonDecode(response.body);
       final candidates = responseData['candidates'] as List?;
-      
+
       if (candidates != null && candidates.isNotEmpty) {
         final content = candidates[0]['content'];
         final parts = content['parts'] as List?;
-        
+
         if (parts != null && parts.isNotEmpty) {
           return parts[0]['text'] ?? 'No response generated';
         }
       }
-      
+
       throw Exception('Unexpected response format from Gemini API');
     } else {
       final errorData = jsonDecode(response.body);
       throw Exception('Gemini API error: ${errorData['error']['message']}');
     }
   }
-  
+
   /// Extract JSON from response text (in case AI adds extra text)
   String _extractJsonFromResponse(String response) {
     // Find the first { and last } to extract JSON
     final startIndex = response.indexOf('{');
     final endIndex = response.lastIndexOf('}');
-    
+
     if (startIndex != -1 && endIndex != -1 && endIndex > startIndex) {
       return response.substring(startIndex, endIndex + 1);
     }
-    
+
     // If no JSON brackets found, return the whole response
     return response;
   }
@@ -172,7 +194,7 @@ class WordOfTheDay {
   final String etymology;
   final String difficulty;
   final DateTime generatedAt;
-  
+
   WordOfTheDay({
     required this.word,
     required this.pronunciation,
@@ -183,7 +205,7 @@ class WordOfTheDay {
     required this.difficulty,
     required this.generatedAt,
   });
-  
+
   factory WordOfTheDay.fromJson(Map<String, dynamic> json) {
     return WordOfTheDay(
       word: json['word'] ?? '',
@@ -196,7 +218,7 @@ class WordOfTheDay {
       generatedAt: DateTime.now(),
     );
   }
-  
+
   Map<String, dynamic> toJson() {
     return {
       'word': word,
@@ -217,14 +239,14 @@ class QuizQuestion {
   final List<String> options;
   final int correctAnswer;
   final String explanation;
-  
+
   QuizQuestion({
     required this.question,
     required this.options,
     required this.correctAnswer,
     required this.explanation,
   });
-  
+
   factory QuizQuestion.fromJson(Map<String, dynamic> json) {
     return QuizQuestion(
       question: json['question'] ?? '',
@@ -233,7 +255,7 @@ class QuizQuestion {
       explanation: json['explanation'] ?? '',
     );
   }
-  
+
   Map<String, dynamic> toJson() {
     return {
       'question': question,

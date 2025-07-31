@@ -65,6 +65,10 @@ dependencies:
   
   # Text-to-Speech
   flutter_tts: ^4.1.0
+  
+  # Markdown rendering and streaming text
+  flutter_markdown: ^0.7.4+1
+  animated_text_kit: ^4.2.2
 
 dev_dependencies:
   flutter_test:

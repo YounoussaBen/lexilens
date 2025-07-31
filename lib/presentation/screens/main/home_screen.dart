@@ -13,7 +13,7 @@ class HomeScreen extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final authState = ref.watch(authStateProvider);
-    
+
     return Scaffold(
       body: SafeArea(
         child: Padding(
@@ -32,11 +32,12 @@ class HomeScreen extends ConsumerWidget {
                     children: [
                       // Word of the Day
                       authState.when(
-                        data: (user) => user != null 
-                          ? _buildWordOfTheDay(context, ref, user.id)
-                          : _buildWordOfTheDayPlaceholder(context),
+                        data: (user) => user != null
+                            ? _buildWordOfTheDay(context, ref, user.id)
+                            : _buildWordOfTheDayPlaceholder(context),
                         loading: () => _buildWordOfTheDayLoading(context),
-                        error: (_, __) => _buildWordOfTheDayPlaceholder(context),
+                        error: (_, __) =>
+                            _buildWordOfTheDayPlaceholder(context),
                       ),
                       const SizedBox(height: 24),
 
@@ -84,18 +85,22 @@ class HomeScreen extends ConsumerWidget {
     );
   }
 
-  Widget _buildWordOfTheDay(BuildContext context, WidgetRef ref, String userId) {
+  Widget _buildWordOfTheDay(
+    BuildContext context,
+    WidgetRef ref,
+    String userId,
+  ) {
     final wordAsync = ref.watch(currentWordOfTheDayProvider(userId));
-    
+
     return wordAsync.when(
-      data: (word) => word != null 
-        ? _buildWordOfTheDayCard(context, word)
-        : _buildWordOfTheDayError(context),
+      data: (word) => word != null
+          ? _buildWordOfTheDayCard(context, word)
+          : _buildWordOfTheDayError(context),
       loading: () => _buildWordOfTheDayLoading(context),
       error: (error, _) => _buildWordOfTheDayError(context),
     );
   }
-  
+
   Widget _buildWordOfTheDayCard(BuildContext context, WordOfTheDay word) {
     return Container(
       decoration: BoxDecoration(
@@ -178,7 +183,21 @@ class HomeScreen extends ConsumerWidget {
             ),
             const SizedBox(height: 20),
             ElevatedButton.icon(
-              onPressed: () => context.go('/chat'),
+              onPressed: () => context.go(
+                '/chat',
+                extra: {
+                  'wordContext': {
+                    'word': word.word,
+                    'pronunciation': word.pronunciation,
+                    'definition': word.definition,
+                    'example': word.example,
+                    'partOfSpeech': word.partOfSpeech,
+                    'difficulty': word.difficulty,
+                    'etymology': word.etymology,
+                  },
+                  'contextType': 'word_of_the_day',
+                },
+              ),
               icon: const Icon(Icons.psychology),
               label: const Text('Ask LexiLens AI'),
               style: ElevatedButton.styleFrom(
@@ -240,7 +259,13 @@ class HomeScreen extends ConsumerWidget {
 
   Widget _buildWordCard(BuildContext context, String word) {
     return GestureDetector(
-      onTap: () => context.go('/chat', extra: {'word': word}),
+      onTap: () => context.go(
+        '/chat',
+        extra: {
+          'wordContext': {'word': word},
+          'contextType': 'saved_word',
+        },
+      ),
       child: Container(
         width: 120,
         padding: const EdgeInsets.all(16),
@@ -326,7 +351,7 @@ class HomeScreen extends ConsumerWidget {
       ),
     );
   }
-  
+
   Widget _buildWordOfTheDayPlaceholder(BuildContext context) {
     return Container(
       decoration: BoxDecoration(
@@ -361,16 +386,16 @@ class HomeScreen extends ConsumerWidget {
             const SizedBox(height: 20),
             Text(
               'Sign in to discover your daily word!',
-              style: Theme.of(context).textTheme.headlineSmall?.copyWith(
-                color: Colors.white,
-              ),
+              style: Theme.of(
+                context,
+              ).textTheme.headlineSmall?.copyWith(color: Colors.white),
             ),
           ],
         ),
       ),
     );
   }
-  
+
   Widget _buildWordOfTheDayLoading(BuildContext context) {
     return Container(
       decoration: BoxDecoration(
@@ -403,9 +428,7 @@ class HomeScreen extends ConsumerWidget {
               ],
             ),
             const SizedBox(height: 20),
-            const Center(
-              child: CircularProgressIndicator(color: Colors.white),
-            ),
+            const Center(child: CircularProgressIndicator(color: Colors.white)),
             const SizedBox(height: 20),
             Center(
               child: Text(
@@ -420,15 +443,12 @@ class HomeScreen extends ConsumerWidget {
       ),
     );
   }
-  
+
   Widget _buildWordOfTheDayError(BuildContext context) {
     return Container(
       decoration: BoxDecoration(
         gradient: LinearGradient(
-          colors: [
-            Colors.red.withOpacity(0.7),
-            Colors.red.withOpacity(0.5),
-          ],
+          colors: [Colors.red.withOpacity(0.7), Colors.red.withOpacity(0.5)],
           begin: Alignment.topLeft,
           end: Alignment.bottomRight,
         ),
@@ -464,7 +484,7 @@ class HomeScreen extends ConsumerWidget {
       ),
     );
   }
-  
+
   Future<void> _speakWord(String word, {bool slowly = false}) async {
     try {
       final ttsService = TTSService();

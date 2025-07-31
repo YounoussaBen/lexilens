@@ -50,11 +50,8 @@ class AppRouter {
           GoRoute(
             path: '/home',
             name: 'home',
-            pageBuilder: (context, state) => _buildPageWithTransition(
-              context,
-              state,
-              const HomeScreen(),
-            ),
+            pageBuilder: (context, state) =>
+                _buildPageWithTransition(context, state, const HomeScreen()),
           ),
           GoRoute(
             path: '/discovery',
@@ -68,11 +65,8 @@ class AppRouter {
           GoRoute(
             path: '/review',
             name: 'review',
-            pageBuilder: (context, state) => _buildPageWithTransition(
-              context,
-              state,
-              const ReviewScreen(),
-            ),
+            pageBuilder: (context, state) =>
+                _buildPageWithTransition(context, state, const ReviewScreen()),
           ),
           GoRoute(
             path: '/chat',
@@ -80,17 +74,14 @@ class AppRouter {
             pageBuilder: (context, state) => _buildPageWithTransition(
               context,
               state,
-              const ChatScreen(),
+              ChatScreen(wordContext: state.extra as Map<String, dynamic>?),
             ),
           ),
           GoRoute(
             path: '/profile',
             name: 'profile',
-            pageBuilder: (context, state) => _buildPageWithTransition(
-              context,
-              state,
-              const ProfileScreen(),
-            ),
+            pageBuilder: (context, state) =>
+                _buildPageWithTransition(context, state, const ProfileScreen()),
           ),
         ],
       ),
@@ -168,10 +159,13 @@ class AppRouter {
         return FadeTransition(
           opacity: CurveTween(curve: Curves.easeInOut).animate(animation),
           child: SlideTransition(
-            position: Tween<Offset>(
-              begin: const Offset(0.05, 0),
-              end: Offset.zero,
-            ).animate(CurveTween(curve: Curves.easeOutCubic).animate(animation)),
+            position:
+                Tween<Offset>(
+                  begin: const Offset(0.05, 0),
+                  end: Offset.zero,
+                ).animate(
+                  CurveTween(curve: Curves.easeOutCubic).animate(animation),
+                ),
             child: child,
           ),
         );

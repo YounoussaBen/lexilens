@@ -1,10 +1,14 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:flutter_markdown/flutter_markdown.dart';
+import 'package:animated_text_kit/animated_text_kit.dart';
 import '../../providers/chat_provider.dart';
 
 /// Chat screen with AI tutor interface for vocabulary learning
 class ChatScreen extends ConsumerStatefulWidget {
-  const ChatScreen({super.key});
+  final Map<String, dynamic>? wordContext;
+
+  const ChatScreen({super.key, this.wordContext});
 
   @override
   ConsumerState<ChatScreen> createState() => _ChatScreenState();
@@ -13,6 +17,50 @@ class ChatScreen extends ConsumerStatefulWidget {
 class _ChatScreenState extends ConsumerState<ChatScreen> {
   final TextEditingController _messageController = TextEditingController();
   final ScrollController _scrollController = ScrollController();
+
+  @override
+  void initState() {
+    super.initState();
+    // Initialize chat with word context if provided
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (widget.wordContext != null) {
+        _initializeWithWordContext();
+      }
+    });
+  }
+
+  void _initializeWithWordContext() {
+    final wordData =
+        widget.wordContext!['wordContext'] as Map<String, dynamic>?;
+    final contextType = widget.wordContext!['contextType'] as String?;
+
+    if (wordData != null && contextType == 'word_of_the_day') {
+      // Send the detailed message to AI but show simple word in UI
+      final fullMessage =
+          "Tell me everything interesting about today's word of the day: '${wordData['word']}'. "
+          "I'd love to learn about its origins, etymology, different meanings, interesting examples, "
+          "synonyms, antonyms, and any fun facts about this word!";
+
+      final displayMessage = "**${wordData['word']}** (Word of the Day)";
+
+      // Add the user message with custom display text
+      ref
+          .read(chatProvider.notifier)
+          .addUserMessage(fullMessage, displayText: displayMessage);
+    } else if (wordData != null && contextType == 'saved_word') {
+      // Handle saved words
+      final fullMessage =
+          "I want to learn more about the word '${wordData['word']}'. "
+          "Can you tell me everything interesting about it? Including its meaning, origins, "
+          "pronunciation, different uses, examples, and any fascinating facts?";
+
+      final displayMessage = "**${wordData['word']}**";
+
+      ref
+          .read(chatProvider.notifier)
+          .addUserMessage(fullMessage, displayText: displayMessage);
+    }
+  }
 
   @override
   void dispose() {
@@ -113,7 +161,7 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
 
   Widget _buildChatContent(BuildContext context) {
     final chatState = ref.watch(chatProvider);
-    
+
     return Column(
       children: [
         // Messages list
@@ -123,11 +171,8 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
               : ListView.builder(
                   controller: _scrollController,
                   padding: const EdgeInsets.all(16.0),
-                  itemCount: chatState.messages.length + (chatState.isLoading ? 1 : 0),
+                  itemCount: chatState.messages.length,
                   itemBuilder: (context, index) {
-                    if (index == chatState.messages.length && chatState.isLoading) {
-                      return _buildLoadingBubble();
-                    }
                     return _buildMessageBubble(chatState.messages[index]);
                   },
                 ),
@@ -161,7 +206,9 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
               Container(
                 padding: const EdgeInsets.all(8),
                 decoration: BoxDecoration(
-                  color: Theme.of(context).colorScheme.primary.withValues(alpha: 0.1),
+                  color: Theme.of(
+                    context,
+                  ).colorScheme.primary.withValues(alpha: 0.1),
                   borderRadius: BorderRadius.circular(8),
                 ),
                 child: Icon(
@@ -189,29 +236,37 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
                 'Practice Words',
                 Icons.psychology_outlined,
                 Colors.purple[600]!,
-                () => ref.read(chatProvider.notifier).sendQuickMessage(
-                  'Help me practice my recent vocabulary words',
-                ),
+                () => ref
+                    .read(chatProvider.notifier)
+                    .sendQuickMessage(
+                      'Help me practice my recent vocabulary words',
+                    ),
               ),
               _buildPremiumQuickActionChip(
                 'Explain Word',
                 Icons.lightbulb_outline,
                 Colors.orange[600]!,
-                () => ref.read(chatProvider.notifier).sendQuickMessage(
-                  'Can you explain the meaning of a word for me?',
-                ),
+                () => ref
+                    .read(chatProvider.notifier)
+                    .sendQuickMessage(
+                      'Can you explain the meaning of a word for me?',
+                    ),
               ),
               _buildPremiumQuickActionChip(
                 'Grammar Help',
                 Icons.school_outlined,
                 Colors.green[600]!,
-                () => ref.read(chatProvider.notifier).sendQuickMessage('I need help with English grammar'),
+                () => ref
+                    .read(chatProvider.notifier)
+                    .sendQuickMessage('I need help with English grammar'),
               ),
               _buildPremiumQuickActionChip(
                 'Create Quiz',
                 Icons.quiz_outlined,
                 Colors.blue[600]!,
-                () => ref.read(chatProvider.notifier).sendQuickMessage('Create a vocabulary quiz for me'),
+                () => ref
+                    .read(chatProvider.notifier)
+                    .sendQuickMessage('Create a vocabulary quiz for me'),
               ),
             ],
           ),
@@ -244,11 +299,7 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
                 color: iconColor.withValues(alpha: 0.1),
                 borderRadius: BorderRadius.circular(6),
               ),
-              child: Icon(
-                icon,
-                size: 16,
-                color: iconColor,
-              ),
+              child: Icon(icon, size: 16, color: iconColor),
             ),
             const SizedBox(width: 8),
             Text(
@@ -337,13 +388,34 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    Text(
-                      message.text,
-                      style: TextStyle(
-                        color: message.isUser ? Colors.white : Colors.grey[800],
-                        fontWeight: FontWeight.w400,
-                      ),
-                    ),
+                    // Handle streaming vs normal messages
+                    if (message.isStreaming &&
+                        message.displayText != null &&
+                        message.displayText!.isNotEmpty)
+                      // Show the streaming text for AI messages
+                      _buildMarkdownContent(
+                        message.displayText!,
+                        isUserMessage: false,
+                      )
+                    else if (message.isStreaming)
+                      // Show loading indicator when streaming but no text yet
+                      _buildStreamingIndicator()
+                    else if (message.isUser)
+                      // Use displayText if available, otherwise use regular text
+                      message.displayText != null
+                          ? _buildMarkdownContent(
+                              message.displayText!,
+                              isUserMessage: true,
+                            )
+                          : Text(
+                              message.text,
+                              style: const TextStyle(
+                                color: Colors.white,
+                                fontWeight: FontWeight.w400,
+                              ),
+                            )
+                    else
+                      _buildMarkdownContent(message.text, isUserMessage: false),
                     const SizedBox(height: 4),
                     Text(
                       _formatTime(message.timestamp),
@@ -453,69 +525,111 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
     });
   }
 
-  Widget _buildLoadingBubble() {
-    return Padding(
-      padding: const EdgeInsets.only(bottom: 16.0),
-      child: Row(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        mainAxisAlignment: MainAxisAlignment.start,
-        children: [
-          Container(
-            width: 36,
-            height: 36,
-            decoration: BoxDecoration(
-              color: Theme.of(context).colorScheme.primary,
-              borderRadius: BorderRadius.circular(18),
-            ),
-            child: const Icon(
-              Icons.psychology,
-              color: Colors.white,
-              size: 20,
-            ),
+  Widget _buildMarkdownContent(String text, {bool isUserMessage = false}) {
+    return Container(
+      width: double.infinity,
+      child: MarkdownBody(
+        data: text,
+        selectable: true,
+        styleSheet: MarkdownStyleSheet(
+          p: TextStyle(
+            color: isUserMessage ? Colors.white : Colors.grey[800],
+            fontWeight: FontWeight.w400,
+            fontSize: 14,
           ),
-          const SizedBox(width: 8),
-          Flexible(
-            child: Container(
-              padding: const EdgeInsets.all(12.0),
-              decoration: BoxDecoration(
-                color: Colors.grey[100],
-                borderRadius: BorderRadius.circular(20),
-                border: Border.all(color: Colors.grey[200]!),
-              ),
-              child: Row(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  SizedBox(
-                    width: 20,
-                    height: 20,
-                    child: CircularProgressIndicator(
-                      strokeWidth: 2,
-                      valueColor: AlwaysStoppedAnimation<Color>(
-                        Theme.of(context).colorScheme.primary,
-                      ),
-                    ),
-                  ),
-                  const SizedBox(width: 8),
-                  Text(
-                    'Thinking...',
-                    style: TextStyle(color: Colors.grey[600]),
-                  ),
-                ],
-              ),
-            ),
+          strong: TextStyle(
+            color: isUserMessage ? Colors.white : Colors.grey[900],
+            fontWeight: FontWeight.w600,
+            fontSize: 14,
           ),
-        ],
+          em: TextStyle(
+            color: isUserMessage
+                ? Colors.white.withOpacity(0.9)
+                : Colors.grey[800],
+            fontStyle: FontStyle.italic,
+            fontSize: 14,
+          ),
+          h1: TextStyle(
+            color: isUserMessage ? Colors.white : Colors.grey[900],
+            fontWeight: FontWeight.bold,
+            fontSize: 20,
+          ),
+          h2: TextStyle(
+            color: isUserMessage ? Colors.white : Colors.grey[900],
+            fontWeight: FontWeight.bold,
+            fontSize: 18,
+          ),
+          h3: TextStyle(
+            color: isUserMessage ? Colors.white : Colors.grey[900],
+            fontWeight: FontWeight.bold,
+            fontSize: 16,
+          ),
+          code: TextStyle(
+            backgroundColor: isUserMessage
+                ? Colors.white.withOpacity(0.2)
+                : Colors.grey[100],
+            color: isUserMessage
+                ? Colors.white
+                : Theme.of(context).colorScheme.primary,
+            fontFamily: 'monospace',
+          ),
+          blockquote: TextStyle(
+            color: isUserMessage
+                ? Colors.white.withOpacity(0.8)
+                : Colors.grey[600],
+            fontStyle: FontStyle.italic,
+          ),
+        ),
       ),
+    );
+  }
+
+  Widget _buildStreamingIndicator() {
+    return Row(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        SizedBox(
+          width: 16,
+          height: 16,
+          child: CircularProgressIndicator(
+            strokeWidth: 2,
+            valueColor: AlwaysStoppedAnimation<Color>(
+              Theme.of(context).colorScheme.primary,
+            ),
+          ),
+        ),
+        const SizedBox(width: 8),
+        AnimatedTextKit(
+          animatedTexts: [
+            TypewriterAnimatedText(
+              'Thinking...',
+              textStyle: TextStyle(color: Colors.grey[600], fontSize: 14),
+              speed: const Duration(
+                milliseconds: 80,
+              ), // Faster typing animation
+            ),
+          ],
+          repeatForever: true,
+          displayFullTextOnTap: false,
+          pause: const Duration(
+            milliseconds: 200,
+          ), // Shorter pause between repetitions
+        ),
+      ],
     );
   }
 
   void _handleMenuSelection(String value) {
     switch (value) {
       case 'practice':
-        ref.read(chatProvider.notifier).sendQuickMessage('Start a practice session with my vocabulary');
+        ref
+            .read(chatProvider.notifier)
+            .sendQuickMessage('Start a practice session with my vocabulary');
         break;
       case 'help':
-        ref.read(chatProvider.notifier).sendQuickMessage('How can you help me learn vocabulary?');
+        ref
+            .read(chatProvider.notifier)
+            .sendQuickMessage('How can you help me learn vocabulary?');
         break;
     }
   }
