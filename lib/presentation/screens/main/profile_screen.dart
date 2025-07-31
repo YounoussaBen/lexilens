@@ -3,7 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import '../../providers/auth_provider.dart';
 
-/// Profile screen with user profile, gamification elements, and settings
+/// Clean profile screen focused on learning stats and settings
 class ProfileScreen extends ConsumerWidget {
   const ProfileScreen({super.key});
 
@@ -12,442 +12,414 @@ class ProfileScreen extends ConsumerWidget {
     final authState = ref.watch(authStateProvider);
 
     return Scaffold(
-      appBar: AppBar(
-        title: const Text('Profile'),
-        actions: [
-          IconButton(
-            icon: const Icon(Icons.settings),
-            onPressed: () => _showSettings(context, ref),
-          ),
-        ],
-      ),
-      body: authState.when(
-        data: (user) => user != null
-            ? _buildProfileContent(context, ref, user)
-            : _buildNotSignedIn(context),
-        loading: () => const Center(child: CircularProgressIndicator()),
-        error: (error, _) => _buildError(context, error.toString()),
+      body: SafeArea(
+        child: authState.when(
+          data: (user) => user != null
+              ? _buildProfileContent(context, ref, user)
+              : _buildNotSignedIn(context),
+          loading: () => const Center(child: CircularProgressIndicator()),
+          error: (error, _) => _buildError(context, error.toString()),
+        ),
       ),
     );
   }
 
   Widget _buildProfileContent(BuildContext context, WidgetRef ref, user) {
-    return SingleChildScrollView(
-      padding: const EdgeInsets.all(16.0),
-      child: Column(
-        children: [
-          // Profile header
-          _buildProfileHeader(context, user),
-          const SizedBox(height: 24),
+    return SafeArea(
+      child: Padding(
+        padding: const EdgeInsets.symmetric(horizontal: 20),
+        child: Column(
+          children: [
+            const SizedBox(height: 20),
+            
+            // Profile Header with Avatar
+            _buildProfileHeader(context, user),
 
-          // Level and XP
-          _buildLevelCard(context),
-          const SizedBox(height: 20),
+            const SizedBox(height: 32),
 
-          // Achievements
-          _buildAchievements(context),
-          const SizedBox(height: 20),
+            // Content
+            Expanded(
+              child: SingleChildScrollView(
+                child: Column(
+                  children: [
+                    // Personal Information Card
+                    _buildPersonalInfoCard(context, user),
+                    const SizedBox(height: 20),
 
-          // Statistics
-          _buildStatistics(context),
-          const SizedBox(height: 20),
+                    // App Information
+                    _buildAppInfo(context),
+                    const SizedBox(height: 20),
 
-          // Learning streak
-          _buildStreakCard(context),
-          const SizedBox(height: 20),
+                    // Settings
+                    _buildSettings(context, ref),
+                    const SizedBox(height: 24),
 
-          // Action buttons
-          _buildActionButtons(context, ref),
-        ],
+                    // Sign out
+                    _buildSignOutButton(context, ref),
+                    const SizedBox(height: 32),
+                  ],
+                ),
+              ),
+            ),
+          ],
+        ),
       ),
     );
   }
 
   Widget _buildProfileHeader(BuildContext context, user) {
-    return Card(
-      child: Padding(
-        padding: const EdgeInsets.all(20.0),
-        child: Column(
+    return Row(
+      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+      children: [
+        Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            CircleAvatar(
-              radius: 50,
-              backgroundColor: Theme.of(context).colorScheme.primary,
-              child: Text(
-                (user.email?.substring(0, 1).toUpperCase()) ?? 'U',
-                style: Theme.of(context).textTheme.headlineMedium?.copyWith(
-                  color: Theme.of(context).colorScheme.onPrimary,
-                  fontWeight: FontWeight.bold,
-                ),
-              ),
-            ),
-            const SizedBox(height: 16),
             Text(
-              user.email ?? 'User',
-              style: Theme.of(
-                context,
-              ).textTheme.titleLarge?.copyWith(fontWeight: FontWeight.bold),
+              'Profile',
+              style: Theme.of(context).textTheme.headlineLarge?.copyWith(
+                fontWeight: FontWeight.bold,
+                color: Theme.of(context).colorScheme.primary,
+              ),
             ),
             const SizedBox(height: 4),
             Text(
-              'Vocabulary Explorer',
-              style: Theme.of(
-                context,
-              ).textTheme.bodyMedium?.copyWith(color: Colors.grey[600]),
-            ),
-            const SizedBox(height: 8),
-            Container(
-              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
-              decoration: BoxDecoration(
-                color: Theme.of(context).colorScheme.primaryContainer,
-                borderRadius: BorderRadius.circular(16),
-              ),
-              child: Text(
-                'Joined 2 weeks ago',
-                style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                  color: Theme.of(context).colorScheme.onPrimaryContainer,
-                ),
+              'Manage your account',
+              style: Theme.of(context).textTheme.bodyLarge?.copyWith(
+                color: Colors.grey[600],
               ),
             ),
           ],
         ),
-      ),
-    );
-  }
-
-  Widget _buildLevelCard(BuildContext context) {
-    return Card(
-      child: Padding(
-        padding: const EdgeInsets.all(20.0),
-        child: Column(
-          children: [
-            Row(
-              mainAxisAlignment: MainAxisAlignment.spaceBetween,
-              children: [
-                Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      'Level 7',
-                      style: Theme.of(context).textTheme.headlineSmall
-                          ?.copyWith(
-                            fontWeight: FontWeight.bold,
-                            color: Theme.of(context).colorScheme.primary,
-                          ),
-                    ),
-                    Text(
-                      'Vocabulary Enthusiast',
-                      style: Theme.of(
-                        context,
-                      ).textTheme.bodyMedium?.copyWith(color: Colors.grey[600]),
-                    ),
-                  ],
-                ),
-                Container(
-                  padding: const EdgeInsets.all(12),
-                  decoration: BoxDecoration(
-                    color: Theme.of(context).colorScheme.primaryContainer,
-                    borderRadius: BorderRadius.circular(12),
-                  ),
-                  child: Icon(
-                    Icons.military_tech,
-                    color: Theme.of(context).colorScheme.onPrimaryContainer,
-                    size: 32,
-                  ),
-                ),
-              ],
+        IconButton(
+          onPressed: () => _showMoreOptions(context),
+          icon: Icon(
+            Icons.more_vert,
+            color: Colors.grey[700],
+            size: 28,
+          ),
+          style: IconButton.styleFrom(
+            backgroundColor: Colors.grey[100],
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(12),
             ),
-            const SizedBox(height: 16),
-            Row(
-              mainAxisAlignment: MainAxisAlignment.spaceBetween,
-              children: [
-                Text('2,450 XP', style: Theme.of(context).textTheme.bodyMedium),
-                Text('3,000 XP', style: Theme.of(context).textTheme.bodyMedium),
-              ],
-            ),
-            const SizedBox(height: 8),
-            LinearProgressIndicator(
-              value: 2450 / 3000,
-              backgroundColor: Theme.of(context).colorScheme.surfaceVariant,
-              valueColor: AlwaysStoppedAnimation<Color>(
-                Theme.of(context).colorScheme.primary,
-              ),
-            ),
-            const SizedBox(height: 8),
-            Text(
-              '550 XP until Level 8',
-              style: Theme.of(
-                context,
-              ).textTheme.bodySmall?.copyWith(color: Colors.grey[600]),
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-
-  Widget _buildAchievements(BuildContext context) {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Row(
-          mainAxisAlignment: MainAxisAlignment.spaceBetween,
-          children: [
-            Text(
-              'Recent Achievements',
-              style: Theme.of(
-                context,
-              ).textTheme.titleLarge?.copyWith(fontWeight: FontWeight.bold),
-            ),
-            TextButton(
-              onPressed: () => _showAllAchievements(context),
-              child: const Text('View All'),
-            ),
-          ],
-        ),
-        const SizedBox(height: 12),
-        SizedBox(
-          height: 100,
-          child: ListView.separated(
-            scrollDirection: Axis.horizontal,
-            itemCount: 4,
-            separatorBuilder: (context, index) => const SizedBox(width: 12),
-            itemBuilder: (context, index) {
-              final achievements = [
-                {
-                  'icon': Icons.flash_on,
-                  'title': 'Speed Learner',
-                  'color': Colors.yellow,
-                },
-                {
-                  'icon': Icons.trending_up,
-                  'title': 'Streak Master',
-                  'color': Colors.orange,
-                },
-                {
-                  'icon': Icons.star,
-                  'title': 'First 100',
-                  'color': Colors.blue,
-                },
-                {
-                  'icon': Icons.camera_alt,
-                  'title': 'Explorer',
-                  'color': Colors.green,
-                },
-              ];
-              final achievement = achievements[index];
-              return _buildAchievementBadge(
-                context,
-                achievement['icon'] as IconData,
-                achievement['title'] as String,
-                achievement['color'] as Color,
-              );
-            },
+            padding: const EdgeInsets.all(12),
           ),
         ),
       ],
     );
   }
 
-  Widget _buildAchievementBadge(
-    BuildContext context,
-    IconData icon,
-    String title,
-    Color color,
-  ) {
+  Widget _buildPersonalInfoCard(BuildContext context, user) {
     return Container(
-      width: 80,
-      padding: const EdgeInsets.all(8),
+      padding: const EdgeInsets.all(24),
       decoration: BoxDecoration(
-        color: color.withOpacity(0.1),
-        borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: color.withOpacity(0.3)),
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(16),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withValues(alpha: 0.04),
+            blurRadius: 10,
+            offset: const Offset(0, 2),
+          ),
+        ],
       ),
       child: Column(
-        mainAxisAlignment: MainAxisAlignment.center,
+        crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Icon(icon, color: color, size: 32),
-          const SizedBox(height: 4),
-          Text(
-            title,
-            style: Theme.of(
-              context,
-            ).textTheme.bodySmall?.copyWith(fontWeight: FontWeight.w500),
-            textAlign: TextAlign.center,
-            maxLines: 2,
-            overflow: TextOverflow.ellipsis,
+          Row(
+            children: [
+              Container(
+                padding: const EdgeInsets.all(8),
+                decoration: BoxDecoration(
+                  color: Theme.of(context).colorScheme.primary.withValues(alpha: 0.1),
+                  borderRadius: BorderRadius.circular(8),
+                ),
+                child: Icon(
+                  Icons.person_outline,
+                  color: Theme.of(context).colorScheme.primary,
+                  size: 20,
+                ),
+              ),
+              const SizedBox(width: 12),
+              Text(
+                'Account Information',
+                style: Theme.of(context).textTheme.titleMedium?.copyWith(
+                  fontWeight: FontWeight.w600,
+                  color: Colors.grey[900],
+                ),
+              ),
+            ],
+          ),
+          
+          const SizedBox(height: 20),
+          
+          Container(
+            padding: const EdgeInsets.all(16),
+            decoration: BoxDecoration(
+              color: const Color(0xFFFAFAFA),
+              borderRadius: BorderRadius.circular(12),
+              border: Border.all(color: Colors.grey[200]!),
+            ),
+            child: Row(
+              children: [
+                Expanded(
+                  child: Text(
+                    user.email ?? 'Not provided',
+                    style: Theme.of(context).textTheme.bodyLarge?.copyWith(
+                      color: Colors.grey[900],
+                      fontWeight: FontWeight.w500,
+                    ),
+                  ),
+                ),
+              ],
+            ),
           ),
         ],
       ),
     );
   }
 
-  Widget _buildStatistics(BuildContext context) {
-    return Card(
-      child: Padding(
-        padding: const EdgeInsets.all(16.0),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Text(
-              'Your Statistics',
-              style: Theme.of(
-                context,
-              ).textTheme.titleMedium?.copyWith(fontWeight: FontWeight.bold),
-            ),
-            const SizedBox(height: 16),
-            Row(
-              children: [
-                Expanded(
-                  child: _buildStatItem(
-                    context,
-                    '127',
-                    'Words Learned',
-                    Icons.library_books,
-                  ),
+
+
+  Widget _buildAppInfo(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.all(20),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(16),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withValues(alpha: 0.04),
+            blurRadius: 10,
+            offset: const Offset(0, 2),
+          ),
+        ],
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Container(
+                padding: const EdgeInsets.all(8),
+                decoration: BoxDecoration(
+                  color: Theme.of(context).colorScheme.primary.withValues(alpha: 0.1),
+                  borderRadius: BorderRadius.circular(8),
                 ),
-                Expanded(
-                  child: _buildStatItem(
-                    context,
-                    '89%',
-                    'Accuracy Rate',
-                    Icons.tablet,
-                  ),
+                child: Icon(
+                  Icons.apps,
+                  color: Theme.of(context).colorScheme.primary,
+                  size: 20,
                 ),
-              ],
-            ),
-            const SizedBox(height: 16),
-            Row(
-              children: [
-                Expanded(
-                  child: _buildStatItem(
-                    context,
-                    '234',
-                    'Reviews Done',
-                    Icons.quiz,
-                  ),
+              ),
+              const SizedBox(width: 12),
+              Text(
+                'App Information',
+                style: Theme.of(context).textTheme.titleMedium?.copyWith(
+                  fontWeight: FontWeight.w600,
+                  color: Colors.grey[900],
                 ),
-                Expanded(
-                  child: _buildStatItem(
-                    context,
-                    '45',
-                    'Perfect Days',
-                    Icons.star,
-                  ),
-                ),
-              ],
-            ),
-          ],
-        ),
+              ),
+            ],
+          ),
+          
+          const SizedBox(height: 16),
+          
+          _buildModernInfoTile(
+            context,
+            icon: Icons.info_outline,
+            title: 'App Version',
+            subtitle: '1.0.0',
+            iconColor: Colors.blue[600]!,
+          ),
+          
+          const SizedBox(height: 12),
+          
+          _buildModernInfoTile(
+            context,
+            icon: Icons.copyright_outlined,
+            title: 'About LexiLens',
+            subtitle: 'Learn vocabulary through visual discovery',
+            iconColor: Colors.green[600]!,
+          ),
+          
+          const SizedBox(height: 12),
+          
+          _buildModernInfoTile(
+            context,
+            icon: Icons.star_outline,
+            title: 'Rate App',
+            subtitle: 'Help us improve with your feedback',
+            iconColor: Colors.orange[600]!,
+            onTap: () => _rateApp(context),
+          ),
+        ],
       ),
     );
   }
 
-  Widget _buildStatItem(
-    BuildContext context,
-    String value,
-    String label,
-    IconData icon,
-  ) {
-    return Column(
-      children: [
-        Icon(icon, color: Theme.of(context).colorScheme.primary, size: 24),
-        const SizedBox(height: 8),
-        Text(
-          value,
-          style: Theme.of(context).textTheme.titleLarge?.copyWith(
-            fontWeight: FontWeight.bold,
-            color: Theme.of(context).colorScheme.primary,
-          ),
+  Widget _buildModernInfoTile(
+    BuildContext context, {
+    required IconData icon,
+    required String title,
+    required String subtitle,
+    required Color iconColor,
+    VoidCallback? onTap,
+  }) {
+    return GestureDetector(
+      onTap: onTap,
+      child: Container(
+        padding: const EdgeInsets.all(16),
+        decoration: BoxDecoration(
+          color: const Color(0xFFFAFAFA),
+          borderRadius: BorderRadius.circular(12),
+          border: Border.all(color: Colors.grey[200]!),
         ),
-        Text(
-          label,
-          style: Theme.of(
-            context,
-          ).textTheme.bodySmall?.copyWith(color: Colors.grey[600]),
-          textAlign: TextAlign.center,
-        ),
-      ],
-    );
-  }
-
-  Widget _buildStreakCard(BuildContext context) {
-    return Card(
-      child: Padding(
-        padding: const EdgeInsets.all(16.0),
         child: Row(
           children: [
             Container(
-              padding: const EdgeInsets.all(12),
+              padding: const EdgeInsets.all(8),
               decoration: BoxDecoration(
-                color: Colors.orange.withOpacity(0.1),
-                borderRadius: BorderRadius.circular(12),
+                color: iconColor.withValues(alpha: 0.1),
+                borderRadius: BorderRadius.circular(8),
               ),
-              child: const Icon(
-                Icons.local_fire_department,
-                color: Colors.orange,
-                size: 32,
+              child: Icon(
+                icon,
+                size: 20,
+                color: iconColor,
               ),
             ),
-            const SizedBox(width: 16),
+            const SizedBox(width: 12),
             Expanded(
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   Text(
-                    '7 Day Streak!',
-                    style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                      fontWeight: FontWeight.bold,
+                    title,
+                    style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                      fontWeight: FontWeight.w600,
+                      color: Colors.grey[900],
                     ),
                   ),
+                  const SizedBox(height: 2),
                   Text(
-                    'Keep it up! You\'re on fire!',
-                    style: Theme.of(
-                      context,
-                    ).textTheme.bodyMedium?.copyWith(color: Colors.grey[600]),
+                    subtitle,
+                    style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                      color: Colors.grey[600],
+                    ),
                   ),
                 ],
               ),
             ),
-            Text('🔥', style: const TextStyle(fontSize: 24)),
+            if (onTap != null)
+              Icon(
+                Icons.chevron_right,
+                color: Colors.grey[400],
+                size: 20,
+              ),
           ],
         ),
       ),
     );
   }
 
-  Widget _buildActionButtons(BuildContext context, WidgetRef ref) {
-    return Column(
-      children: [
-        SizedBox(
-          width: double.infinity,
-          child: ElevatedButton.icon(
-            onPressed: () => _exportData(context),
-            icon: const Icon(Icons.download),
-            label: const Text('Export Learning Data'),
+  Widget _buildSettings(BuildContext context, WidgetRef ref) {
+    return Container(
+      padding: const EdgeInsets.all(20),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(16),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withValues(alpha: 0.04),
+            blurRadius: 10,
+            offset: const Offset(0, 2),
+          ),
+        ],
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Container(
+                padding: const EdgeInsets.all(8),
+                decoration: BoxDecoration(
+                  color: Theme.of(context).colorScheme.primary.withValues(alpha: 0.1),
+                  borderRadius: BorderRadius.circular(8),
+                ),
+                child: Icon(
+                  Icons.settings_outlined,
+                  color: Theme.of(context).colorScheme.primary,
+                  size: 20,
+                ),
+              ),
+              const SizedBox(width: 12),
+              Text(
+                'Settings',
+                style: Theme.of(context).textTheme.titleMedium?.copyWith(
+                  fontWeight: FontWeight.w600,
+                  color: Colors.grey[900],
+                ),
+              ),
+            ],
+          ),
+          
+          const SizedBox(height: 16),
+          
+          _buildModernInfoTile(
+            context,
+            icon: Icons.help_outline,
+            title: 'Help & Support',
+            subtitle: 'Get help with LexiLens',
+            iconColor: Colors.purple[600]!,
+            onTap: () => _showHelp(context),
+          ),
+          
+          const SizedBox(height: 12),
+          
+          _buildModernInfoTile(
+            context,
+            icon: Icons.privacy_tip_outlined,
+            title: 'Privacy Policy',
+            subtitle: 'Review our privacy terms',
+            iconColor: Colors.red[600]!,
+            onTap: () => _showPrivacyPolicy(context),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildSignOutButton(BuildContext context, WidgetRef ref) {
+    return Container(
+      width: double.infinity,
+      decoration: BoxDecoration(
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(color: Colors.red[400]!),
+      ),
+      child: TextButton.icon(
+        onPressed: () => _signOut(context, ref),
+        icon: Icon(
+          Icons.logout,
+          color: Colors.red[600],
+          size: 20,
+        ),
+        label: Text(
+          'Sign Out',
+          style: TextStyle(
+            color: Colors.red[600],
+            fontWeight: FontWeight.w600,
+            fontSize: 16,
           ),
         ),
-        const SizedBox(height: 12),
-        SizedBox(
-          width: double.infinity,
-          child: ElevatedButton.icon(
-            onPressed: () => _shareProgress(context),
-            icon: const Icon(Icons.share),
-            label: const Text('Share Progress'),
+        style: TextButton.styleFrom(
+          padding: const EdgeInsets.symmetric(vertical: 16),
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(12),
           ),
         ),
-        const SizedBox(height: 12),
-        SizedBox(
-          width: double.infinity,
-          child: OutlinedButton.icon(
-            onPressed: () => _signOut(context, ref),
-            icon: const Icon(Icons.logout),
-            label: const Text('Sign Out'),
-            style: OutlinedButton.styleFrom(
-              foregroundColor: Theme.of(context).colorScheme.error,
-            ),
-          ),
-        ),
-      ],
+      ),
     );
   }
 
@@ -517,87 +489,81 @@ class ProfileScreen extends ConsumerWidget {
     );
   }
 
-  void _showSettings(BuildContext context, WidgetRef ref) {
+  void _showMoreOptions(BuildContext context) {
     showModalBottomSheet(
       context: context,
+      backgroundColor: Colors.white,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+      ),
       builder: (context) => Container(
-        padding: const EdgeInsets.all(16.0),
+        padding: const EdgeInsets.all(20),
         child: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
-            ListTile(
-              leading: const Icon(Icons.notifications),
-              title: const Text('Notifications'),
-              subtitle: const Text('Manage notification preferences'),
-              onTap: () {
-                Navigator.pop(context);
-                // TODO: Show notification settings
-              },
+            Container(
+              width: 40,
+              height: 4,
+              decoration: BoxDecoration(
+                color: Colors.grey[300],
+                borderRadius: BorderRadius.circular(2),
+              ),
             ),
-            ListTile(
-              leading: const Icon(Icons.language),
-              title: const Text('Language'),
-              subtitle: const Text('Change app language'),
-              onTap: () {
-                Navigator.pop(context);
-                // TODO: Show language settings
-              },
+            const SizedBox(height: 20),
+            Text(
+              'More Options',
+              style: Theme.of(context).textTheme.titleLarge?.copyWith(
+                fontWeight: FontWeight.w600,
+              ),
             ),
+            const SizedBox(height: 20),
             ListTile(
-              leading: const Icon(Icons.privacy_tip),
-              title: const Text('Privacy'),
-              subtitle: const Text('Privacy and data settings'),
-              onTap: () {
-                Navigator.pop(context);
-                // TODO: Show privacy settings
-              },
-            ),
-            ListTile(
-              leading: const Icon(Icons.help),
+              leading: Icon(Icons.help_outline, color: Theme.of(context).colorScheme.primary),
               title: const Text('Help & Support'),
-              subtitle: const Text('Get help and contact support'),
               onTap: () {
                 Navigator.pop(context);
-                // TODO: Show help screen
+                _showHelp(context);
               },
             ),
+            ListTile(
+              leading: Icon(Icons.privacy_tip_outlined, color: Theme.of(context).colorScheme.primary),
+              title: const Text('Privacy Policy'),
+              onTap: () {
+                Navigator.pop(context);
+                _showPrivacyPolicy(context);
+              },
+            ),
+            ListTile(
+              leading: Icon(Icons.star_outline, color: Theme.of(context).colorScheme.primary),
+              title: const Text('Rate App'),
+              onTap: () {
+                Navigator.pop(context);
+                _rateApp(context);
+              },
+            ),
+            const SizedBox(height: 20),
           ],
         ),
       ),
     );
   }
 
-  void _showAllAchievements(BuildContext context) {
-    showDialog(
-      context: context,
-      builder: (context) => AlertDialog(
-        title: const Text('All Achievements'),
-        content: const SizedBox(
-          width: double.maxFinite,
-          child: Text('Achievement system will be implemented here.'),
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.of(context).pop(),
-            child: const Text('Close'),
-          ),
-        ],
-      ),
-    );
-  }
-
-  void _exportData(BuildContext context) {
-    // TODO: Implement data export
+  void _showHelp(BuildContext context) {
     ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(content: Text('Data export feature coming soon!')),
+      const SnackBar(content: Text('Help & Support coming soon!')),
     );
   }
 
-  void _shareProgress(BuildContext context) {
-    // TODO: Implement progress sharing
-    ScaffoldMessenger.of(
-      context,
-    ).showSnackBar(const SnackBar(content: Text('Share feature coming soon!')));
+  void _showPrivacyPolicy(BuildContext context) {
+    ScaffoldMessenger.of(context).showSnackBar(
+      const SnackBar(content: Text('Privacy Policy coming soon!')),
+    );
+  }
+
+  void _rateApp(BuildContext context) {
+    ScaffoldMessenger.of(context).showSnackBar(
+      const SnackBar(content: Text('Rate App feature coming soon!')),
+    );
   }
 
   void _signOut(BuildContext context, WidgetRef ref) {

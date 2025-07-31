@@ -33,14 +33,14 @@ class _ReviewScreenState extends ConsumerState<ReviewScreen>
         bottom: TabBar(
           controller: _tabController,
           tabs: const [
-            Tab(text: 'Due Now', icon: Icon(Icons.schedule)),
-            Tab(text: 'All Words', icon: Icon(Icons.library_books)),
-            Tab(text: 'Statistics', icon: Icon(Icons.analytics)),
+            Tab(text: 'Due Now', icon: Icon(Icons.schedule_outlined)),
+            Tab(text: 'All Words', icon: Icon(Icons.library_books_outlined)),
+            Tab(text: 'Statistics', icon: Icon(Icons.analytics_outlined)),
           ],
         ),
         actions: [
           IconButton(
-            icon: const Icon(Icons.settings),
+            icon: const Icon(Icons.settings_outlined),
             onPressed: () => _showSettingsDialog(context),
           ),
         ],
@@ -79,14 +79,15 @@ class _ReviewScreenState extends ConsumerState<ReviewScreen>
                       vertical: 6,
                     ),
                     decoration: BoxDecoration(
-                      color: Theme.of(context).colorScheme.primaryContainer,
+                      color: const Color(0xFF0080FF).withOpacity(0.1),
                       borderRadius: BorderRadius.circular(20),
+                      border: Border.all(color: const Color(0xFF0080FF).withOpacity(0.3)),
                     ),
                     child: Text(
                       '12/25 done',
                       style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                        color: Theme.of(context).colorScheme.onPrimaryContainer,
-                        fontWeight: FontWeight.w500,
+                        color: const Color(0xFF0080FF),
+                        fontWeight: FontWeight.w600,
                       ),
                     ),
                   ),
@@ -95,10 +96,11 @@ class _ReviewScreenState extends ConsumerState<ReviewScreen>
               const SizedBox(height: 12),
               LinearProgressIndicator(
                 value: 0.48,
-                backgroundColor: Theme.of(context).colorScheme.surfaceVariant,
-                valueColor: AlwaysStoppedAnimation<Color>(
-                  Theme.of(context).colorScheme.primary,
+                backgroundColor: Colors.grey[200],
+                valueColor: const AlwaysStoppedAnimation<Color>(
+                  Color(0xFF0080FF),
                 ),
+                borderRadius: BorderRadius.circular(8),
               ),
             ],
           ),
@@ -111,20 +113,23 @@ class _ReviewScreenState extends ConsumerState<ReviewScreen>
               child: Column(
                 mainAxisAlignment: MainAxisAlignment.center,
                 children: [
-                  Card(
-                    elevation: 8,
-                    child: Container(
-                      width: double.infinity,
-                      height: 300,
-                      padding: const EdgeInsets.all(24.0),
-                      child: Column(
-                        mainAxisAlignment: MainAxisAlignment.center,
-                        children: [
-                          Icon(
-                            Icons.image,
-                            size: 80,
-                            color: Theme.of(context).colorScheme.primary,
-                          ),
+                  Container(
+                    width: double.infinity,
+                    height: 300,
+                    padding: const EdgeInsets.all(24.0),
+                    decoration: BoxDecoration(
+                      color: Colors.white,
+                      borderRadius: BorderRadius.circular(20),
+                      border: Border.all(color: Colors.grey[200]!),
+                    ),
+                    child: Column(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: [
+                        Icon(
+                          Icons.image_outlined,
+                          size: 80,
+                          color: const Color(0xFF0080FF),
+                        ),
                           const SizedBox(height: 20),
                           Text(
                             'Apple',
@@ -162,7 +167,6 @@ class _ReviewScreenState extends ConsumerState<ReviewScreen>
                         ],
                       ),
                     ),
-                  ),
                   const SizedBox(height: 32),
                   Row(
                     mainAxisAlignment: MainAxisAlignment.spaceEvenly,

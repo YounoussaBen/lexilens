@@ -50,27 +50,47 @@ class AppRouter {
           GoRoute(
             path: '/home',
             name: 'home',
-            builder: (context, state) => const HomeScreen(),
+            pageBuilder: (context, state) => _buildPageWithTransition(
+              context,
+              state,
+              const HomeScreen(),
+            ),
           ),
           GoRoute(
             path: '/discovery',
             name: 'discovery',
-            builder: (context, state) => const DiscoveryScreen(),
+            pageBuilder: (context, state) => _buildPageWithTransition(
+              context,
+              state,
+              const DiscoveryScreen(),
+            ),
           ),
           GoRoute(
             path: '/review',
             name: 'review',
-            builder: (context, state) => const ReviewScreen(),
+            pageBuilder: (context, state) => _buildPageWithTransition(
+              context,
+              state,
+              const ReviewScreen(),
+            ),
           ),
           GoRoute(
             path: '/chat',
             name: 'chat',
-            builder: (context, state) => const ChatScreen(),
+            pageBuilder: (context, state) => _buildPageWithTransition(
+              context,
+              state,
+              const ChatScreen(),
+            ),
           ),
           GoRoute(
             path: '/profile',
             name: 'profile',
-            builder: (context, state) => const ProfileScreen(),
+            pageBuilder: (context, state) => _buildPageWithTransition(
+              context,
+              state,
+              const ProfileScreen(),
+            ),
           ),
         ],
       ),
@@ -133,6 +153,32 @@ class AppRouter {
 
     // No redirect needed
     return null;
+  }
+
+  /// Build page with smooth transition animation
+  Page<dynamic> _buildPageWithTransition(
+    BuildContext context,
+    GoRouterState state,
+    Widget child,
+  ) {
+    return CustomTransitionPage<void>(
+      key: state.pageKey,
+      child: child,
+      transitionsBuilder: (context, animation, secondaryAnimation, child) {
+        return FadeTransition(
+          opacity: CurveTween(curve: Curves.easeInOut).animate(animation),
+          child: SlideTransition(
+            position: Tween<Offset>(
+              begin: const Offset(0.05, 0),
+              end: Offset.zero,
+            ).animate(CurveTween(curve: Curves.easeOutCubic).animate(animation)),
+            child: child,
+          ),
+        );
+      },
+      transitionDuration: const Duration(milliseconds: 300),
+      reverseTransitionDuration: const Duration(milliseconds: 250),
+    );
   }
 }
 
