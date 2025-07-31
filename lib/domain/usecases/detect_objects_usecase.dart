@@ -1,4 +1,4 @@
-import 'dart:typed_data';
+import 'package:camera/camera.dart';
 import '../entities/detection_result.dart';
 import '../repositories/object_detection_repository.dart';
 
@@ -7,10 +7,10 @@ class DetectObjectsUseCase {
 
   DetectObjectsUseCase(this.repository);
 
-  Future<List<DetectionResult>> call(Uint8List imageBytes) async {
+  Future<List<DetectionResult>> call(CameraImage image) async {
     if (!repository.isModelLoaded) {
       await repository.loadModel();
     }
-    return await repository.detectObjects(imageBytes);
+    return await repository.detectObjects(image);
   }
 }

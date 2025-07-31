@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import '../object_detection_screen.dart';
 
 /// Discovery screen that wraps the camera detection functionality
 /// This integrates the existing YOLO object detection with the new navigation structure
@@ -173,9 +174,7 @@ class CameraDetectionContent extends StatelessWidget {
   }
 }
 
-/// Placeholder for the actual camera detection view
-/// TODO: Extract the camera detection logic from CameraDetectionScreen
-/// and implement it here without the scaffold wrapper
+/// Camera detection view with navigation to full-screen detection
 class _CameraDetectionView extends StatelessWidget {
   const _CameraDetectionView();
 
@@ -191,7 +190,7 @@ class _CameraDetectionView extends StatelessWidget {
           Icon(Icons.camera_alt, size: 80, color: Colors.grey[400]),
           const SizedBox(height: 16),
           Text(
-            'Camera detection will be implemented here',
+            'Real-time Object Detection',
             style: Theme.of(
               context,
             ).textTheme.titleMedium?.copyWith(color: Colors.grey[600]),
@@ -199,7 +198,7 @@ class _CameraDetectionView extends StatelessWidget {
           ),
           const SizedBox(height: 8),
           Text(
-            'This will use the existing YOLO detection logic\nfrom CameraDetectionScreen',
+            'Discover objects around you and learn their names\nwith AI-powered detection',
             style: Theme.of(
               context,
             ).textTheme.bodyMedium?.copyWith(color: Colors.grey[500]),
@@ -208,15 +207,17 @@ class _CameraDetectionView extends StatelessWidget {
           const SizedBox(height: 24),
           ElevatedButton.icon(
             onPressed: () {
-              // TODO: Implement camera initialization
-              ScaffoldMessenger.of(context).showSnackBar(
-                const SnackBar(
-                  content: Text('Camera detection integration coming soon!'),
+              Navigator.of(context).push(
+                MaterialPageRoute(
+                  builder: (context) => const ObjectDetectionScreen(),
                 ),
               );
             },
             icon: const Icon(Icons.camera_alt),
-            label: const Text('Start Camera'),
+            label: const Text('Start Detection'),
+            style: ElevatedButton.styleFrom(
+              padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
+            ),
           ),
         ],
       ),
