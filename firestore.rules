@@ -1,0 +1,31 @@
+rules_version = '2';
+
+service cloud.firestore {
+  match /databases/{database}/documents {
+    // Allow users to read and write their own profile data
+    match /users/{userId} {
+      allow read, write: if request.auth != null && request.auth.uid == userId;
+    }
+    
+    // Allow users to read and write their own detection history
+    match /users/{userId}/detections/{detectionId} {
+      allow read, write: if request.auth != null && request.auth.uid == userId;
+    }
+    
+    // Allow users to read shared vocabulary/object data (if any)
+    match /vocabulary/{objectId} {
+      allow read: if request.auth != null;
+      // Only admins can write vocabulary data (add separate admin rules if needed)
+    }
+    
+    // Allow users to read and write their own learning progress
+    match /users/{userId}/progress/{progressId} {
+      allow read, write: if request.auth != null && request.auth.uid == userId;
+    }
+    
+    // Deny all other access
+    match /{document=**} {
+      allow read, write: if false;
+    }
+  }
+}
