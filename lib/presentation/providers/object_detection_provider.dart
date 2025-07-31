@@ -1,4 +1,4 @@
-import 'dart:typed_data';
+import 'package:camera/camera.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../domain/entities/detection_result.dart';
 import '../../domain/usecases/detect_objects_usecase.dart';
@@ -67,7 +67,7 @@ class ObjectDetectionNotifier extends StateNotifier<ObjectDetectionState> {
     }
   }
 
-  Future<void> detectObjects(Uint8List imageBytes) async {
+  Future<void> detectObjects(CameraImage image) async {
     if (!state.isModelLoaded) {
       await initializeModel();
       if (!state.isModelLoaded) return;
@@ -76,7 +76,7 @@ class ObjectDetectionNotifier extends StateNotifier<ObjectDetectionState> {
     state = state.copyWith(isLoading: true, error: null);
     
     try {
-      final detections = await detectObjectsUseCase(imageBytes);
+      final detections = await detectObjectsUseCase(image);
       state = state.copyWith(isLoading: false, detections: detections);
     } catch (e) {
       state = state.copyWith(isLoading: false, error: e.toString());

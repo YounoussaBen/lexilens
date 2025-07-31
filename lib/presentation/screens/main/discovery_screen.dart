@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import '../object_detection_screen.dart';
+import '../detection_wrapper_screen.dart';
 
 /// Discovery screen that wraps the camera detection functionality
 /// This integrates the existing YOLO object detection with the new navigation structure
@@ -209,7 +209,7 @@ class _CameraDetectionView extends StatelessWidget {
             onPressed: () {
               Navigator.of(context).push(
                 MaterialPageRoute(
-                  builder: (context) => const ObjectDetectionScreen(),
+                  builder: (context) => const DetectionWrapperScreen(),
                 ),
               );
             },
