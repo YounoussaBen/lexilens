@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import '../../providers/chat_provider.dart';
 
 /// Chat screen with AI tutor interface for vocabulary learning
 class ChatScreen extends ConsumerStatefulWidget {
@@ -12,24 +13,12 @@ class ChatScreen extends ConsumerStatefulWidget {
 class _ChatScreenState extends ConsumerState<ChatScreen> {
   final TextEditingController _messageController = TextEditingController();
   final ScrollController _scrollController = ScrollController();
-  final List<ChatMessage> _messages = [];
-
-  @override
-  void initState() {
-    super.initState();
-    _initializeChat();
-  }
 
   @override
   void dispose() {
     _messageController.dispose();
     _scrollController.dispose();
     super.dispose();
-  }
-
-  void _initializeChat() {
-    // Chat starts empty to show the empty state with quick actions
-    // Welcome message will be added when user first interacts
   }
 
   @override
@@ -79,7 +68,7 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
           children: [
             IconButton(
               icon: const Icon(Icons.refresh_outlined),
-              onPressed: _clearChat,
+              onPressed: () => ref.read(chatProvider.notifier).clearChat(),
               style: IconButton.styleFrom(
                 backgroundColor: Colors.grey[100],
                 shape: RoundedRectangleBorder(
@@ -123,18 +112,23 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
   }
 
   Widget _buildChatContent(BuildContext context) {
+    final chatState = ref.watch(chatProvider);
+    
     return Column(
       children: [
         // Messages list
         Expanded(
-          child: _messages.isEmpty
+          child: chatState.messages.isEmpty
               ? _buildEmptyState()
               : ListView.builder(
                   controller: _scrollController,
                   padding: const EdgeInsets.all(16.0),
-                  itemCount: _messages.length,
+                  itemCount: chatState.messages.length + (chatState.isLoading ? 1 : 0),
                   itemBuilder: (context, index) {
-                    return _buildMessageBubble(_messages[index]);
+                    if (index == chatState.messages.length && chatState.isLoading) {
+                      return _buildLoadingBubble();
+                    }
+                    return _buildMessageBubble(chatState.messages[index]);
                   },
                 ),
         ),
@@ -195,7 +189,7 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
                 'Practice Words',
                 Icons.psychology_outlined,
                 Colors.purple[600]!,
-                () => _sendQuickMessage(
+                () => ref.read(chatProvider.notifier).sendQuickMessage(
                   'Help me practice my recent vocabulary words',
                 ),
               ),
@@ -203,7 +197,7 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
                 'Explain Word',
                 Icons.lightbulb_outline,
                 Colors.orange[600]!,
-                () => _sendQuickMessage(
+                () => ref.read(chatProvider.notifier).sendQuickMessage(
                   'Can you explain the meaning of a word for me?',
                 ),
               ),
@@ -211,13 +205,13 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
                 'Grammar Help',
                 Icons.school_outlined,
                 Colors.green[600]!,
-                () => _sendQuickMessage('I need help with English grammar'),
+                () => ref.read(chatProvider.notifier).sendQuickMessage('I need help with English grammar'),
               ),
               _buildPremiumQuickActionChip(
                 'Create Quiz',
                 Icons.quiz_outlined,
                 Colors.blue[600]!,
-                () => _sendQuickMessage('Create a vocabulary quiz for me'),
+                () => ref.read(chatProvider.notifier).sendQuickMessage('Create a vocabulary quiz for me'),
               ),
             ],
           ),
@@ -442,108 +436,9 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
     final text = _messageController.text.trim();
     if (text.isEmpty) return;
 
-    // Add welcome message if this is the first interaction
-    if (_messages.isEmpty) {
-      _addWelcomeMessage();
-    }
-
-    _addMessage(text, true);
+    ref.read(chatProvider.notifier).addUserMessage(text);
     _messageController.clear();
-
-    // Simulate AI response
-    Future.delayed(const Duration(milliseconds: 500), () {
-      _simulateAIResponse(text);
-    });
-  }
-
-  void _sendQuickMessage(String message) {
-    // Add welcome message if this is the first interaction
-    if (_messages.isEmpty) {
-      _addWelcomeMessage();
-    }
-
-    _addMessage(message, true);
-
-    // Simulate AI response
-    Future.delayed(const Duration(milliseconds: 500), () {
-      _simulateAIResponse(message);
-    });
-  }
-
-  void _addWelcomeMessage() {
-    setState(() {
-      _messages.add(
-        ChatMessage(
-          text:
-              "Hello! I'm your AI vocabulary tutor. I can help you:\n\n"
-              "• Practice vocabulary from your discoveries\n"
-              "• Explain word meanings and usage\n"
-              "• Create custom learning exercises\n"
-              "• Answer questions about English\n\n"
-              "How can I help you today?",
-          isUser: false,
-          timestamp: DateTime.now(),
-        ),
-      );
-    });
-  }
-
-  void _addMessage(String text, bool isUser) {
-    setState(() {
-      _messages.add(
-        ChatMessage(text: text, isUser: isUser, timestamp: DateTime.now()),
-      );
-    });
     _scrollToBottom();
-  }
-
-  void _simulateAIResponse(String userMessage) {
-    String response;
-
-    if (userMessage.toLowerCase().contains('practice')) {
-      response =
-          "Great! Let's practice your vocabulary. Here are some words from your recent discoveries:\n\n"
-          "1. **Apple** - Can you use this word in a sentence?\n"
-          "2. **Chair** - What's another word for this?\n"
-          "3. **Phone** - Describe what this object does.\n\n"
-          "Pick one to start with!";
-    } else if (userMessage.toLowerCase().contains('explain') ||
-        userMessage.toLowerCase().contains('meaning')) {
-      response =
-          "I'd be happy to explain word meanings! You can ask me about:\n\n"
-          "• Any word from your vocabulary list\n"
-          "• Synonyms and antonyms\n"
-          "• Usage in different contexts\n"
-          "• Etymology (word origins)\n\n"
-          "What word would you like me to explain?";
-    } else if (userMessage.toLowerCase().contains('grammar')) {
-      response =
-          "I can help with various grammar topics:\n\n"
-          "• Verb tenses\n"
-          "• Sentence structure\n"
-          "• Parts of speech\n"
-          "• Common mistakes\n\n"
-          "What specific grammar concept do you need help with?";
-    } else if (userMessage.toLowerCase().contains('quiz')) {
-      response =
-          "I'll create a custom quiz for you! Based on your vocabulary:\n\n"
-          "**Question 1:** What is the definition of 'Apple'?\n"
-          "a) A red vehicle\n"
-          "b) A round fruit\n"
-          "c) A piece of furniture\n\n"
-          "Type 'a', 'b', or 'c' to answer!";
-    } else {
-      response =
-          "That's an interesting question! I'm here to help you learn vocabulary and improve your English. "
-          "You can ask me to:\n\n"
-          "• Explain word meanings\n"
-          "• Help with pronunciation\n"
-          "• Create practice exercises\n"
-          "• Answer grammar questions\n\n"
-          "What would you like to explore?";
-    }
-
-    _addMessage(response, false);
   }
 
   void _scrollToBottom() {
@@ -558,26 +453,56 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
     });
   }
 
-  void _clearChat() {
-    showDialog(
-      context: context,
-      builder: (context) => AlertDialog(
-        title: const Text('Clear Chat'),
-        content: const Text('Are you sure you want to clear all messages?'),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.of(context).pop(),
-            child: const Text('Cancel'),
+  Widget _buildLoadingBubble() {
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 16.0),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        mainAxisAlignment: MainAxisAlignment.start,
+        children: [
+          Container(
+            width: 36,
+            height: 36,
+            decoration: BoxDecoration(
+              color: Theme.of(context).colorScheme.primary,
+              borderRadius: BorderRadius.circular(18),
+            ),
+            child: const Icon(
+              Icons.psychology,
+              color: Colors.white,
+              size: 20,
+            ),
           ),
-          ElevatedButton(
-            onPressed: () {
-              setState(() {
-                _messages.clear();
-                // Don't call _initializeChat() to keep the empty state
-              });
-              Navigator.of(context).pop();
-            },
-            child: const Text('Clear'),
+          const SizedBox(width: 8),
+          Flexible(
+            child: Container(
+              padding: const EdgeInsets.all(12.0),
+              decoration: BoxDecoration(
+                color: Colors.grey[100],
+                borderRadius: BorderRadius.circular(20),
+                border: Border.all(color: Colors.grey[200]!),
+              ),
+              child: Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  SizedBox(
+                    width: 20,
+                    height: 20,
+                    child: CircularProgressIndicator(
+                      strokeWidth: 2,
+                      valueColor: AlwaysStoppedAnimation<Color>(
+                        Theme.of(context).colorScheme.primary,
+                      ),
+                    ),
+                  ),
+                  const SizedBox(width: 8),
+                  Text(
+                    'Thinking...',
+                    style: TextStyle(color: Colors.grey[600]),
+                  ),
+                ],
+              ),
+            ),
           ),
         ],
       ),
@@ -587,10 +512,10 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
   void _handleMenuSelection(String value) {
     switch (value) {
       case 'practice':
-        _sendQuickMessage('Start a practice session with my vocabulary');
+        ref.read(chatProvider.notifier).sendQuickMessage('Start a practice session with my vocabulary');
         break;
       case 'help':
-        _sendQuickMessage('How can you help me learn vocabulary?');
+        ref.read(chatProvider.notifier).sendQuickMessage('How can you help me learn vocabulary?');
         break;
     }
   }
@@ -598,17 +523,4 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
   String _formatTime(DateTime timestamp) {
     return '${timestamp.hour.toString().padLeft(2, '0')}:${timestamp.minute.toString().padLeft(2, '0')}';
   }
-}
-
-/// Model class for chat messages
-class ChatMessage {
-  final String text;
-  final bool isUser;
-  final DateTime timestamp;
-
-  ChatMessage({
-    required this.text,
-    required this.isUser,
-    required this.timestamp,
-  });
 }

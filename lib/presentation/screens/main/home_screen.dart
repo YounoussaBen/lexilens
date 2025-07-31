@@ -1,6 +1,10 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
+import '../../../core/services/word_of_the_day_service.dart';
+import '../../../core/services/gemini_service.dart';
+import '../../../core/services/tts_service.dart';
+import '../../providers/auth_provider.dart';
 
 /// Home screen featuring Word of the Day and learning tools
 class HomeScreen extends ConsumerWidget {
@@ -8,6 +12,8 @@ class HomeScreen extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
+    final authState = ref.watch(authStateProvider);
+    
     return Scaffold(
       body: SafeArea(
         child: Padding(
@@ -25,7 +31,13 @@ class HomeScreen extends ConsumerWidget {
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
                       // Word of the Day
-                      _buildWordOfTheDay(context),
+                      authState.when(
+                        data: (user) => user != null 
+                          ? _buildWordOfTheDay(context, ref, user.id)
+                          : _buildWordOfTheDayPlaceholder(context),
+                        loading: () => _buildWordOfTheDayLoading(context),
+                        error: (_, __) => _buildWordOfTheDayPlaceholder(context),
+                      ),
                       const SizedBox(height: 24),
 
                       // Saved Words
@@ -72,7 +84,19 @@ class HomeScreen extends ConsumerWidget {
     );
   }
 
-  Widget _buildWordOfTheDay(BuildContext context) {
+  Widget _buildWordOfTheDay(BuildContext context, WidgetRef ref, String userId) {
+    final wordAsync = ref.watch(currentWordOfTheDayProvider(userId));
+    
+    return wordAsync.when(
+      data: (word) => word != null 
+        ? _buildWordOfTheDayCard(context, word)
+        : _buildWordOfTheDayError(context),
+      loading: () => _buildWordOfTheDayLoading(context),
+      error: (error, _) => _buildWordOfTheDayError(context),
+    );
+  }
+  
+  Widget _buildWordOfTheDayCard(BuildContext context, WordOfTheDay word) {
     return Container(
       decoration: BoxDecoration(
         gradient: LinearGradient(
@@ -111,24 +135,43 @@ class HomeScreen extends ConsumerWidget {
               ],
             ),
             const SizedBox(height: 20),
-            Text(
-              'Serendipity',
-              style: Theme.of(context).textTheme.headlineLarge?.copyWith(
-                fontWeight: FontWeight.bold,
-                color: Colors.white,
-              ),
+            Row(
+              children: [
+                Expanded(
+                  child: Text(
+                    word.word,
+                    style: Theme.of(context).textTheme.headlineLarge?.copyWith(
+                      fontWeight: FontWeight.bold,
+                      color: Colors.white,
+                    ),
+                  ),
+                ),
+                IconButton(
+                  onPressed: () => _speakWord(word.word),
+                  icon: const Icon(Icons.volume_up, color: Colors.white),
+                  style: IconButton.styleFrom(
+                    backgroundColor: Colors.white.withOpacity(0.2),
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(8),
+                    ),
+                  ),
+                ),
+              ],
             ),
             const SizedBox(height: 4),
-            Text(
-              '/ˌsɛrənˈdɪpɪti/',
-              style: Theme.of(context).textTheme.bodyLarge?.copyWith(
-                color: Colors.white.withOpacity(0.8),
-                fontStyle: FontStyle.italic,
+            GestureDetector(
+              onTap: () => _speakWord(word.word, slowly: true),
+              child: Text(
+                word.pronunciation,
+                style: Theme.of(context).textTheme.bodyLarge?.copyWith(
+                  color: Colors.white.withOpacity(0.8),
+                  fontStyle: FontStyle.italic,
+                ),
               ),
             ),
             const SizedBox(height: 12),
             Text(
-              'The occurrence of events by chance in a happy or beneficial way.',
+              word.definition,
               style: Theme.of(context).textTheme.bodyLarge?.copyWith(
                 color: Colors.white.withOpacity(0.9),
               ),
@@ -282,5 +325,156 @@ class HomeScreen extends ConsumerWidget {
         ),
       ),
     );
+  }
+  
+  Widget _buildWordOfTheDayPlaceholder(BuildContext context) {
+    return Container(
+      decoration: BoxDecoration(
+        gradient: LinearGradient(
+          colors: [
+            Theme.of(context).colorScheme.primary.withOpacity(0.7),
+            Theme.of(context).colorScheme.primary.withOpacity(0.5),
+          ],
+          begin: Alignment.topLeft,
+          end: Alignment.bottomRight,
+        ),
+        borderRadius: BorderRadius.circular(20),
+      ),
+      child: Padding(
+        padding: const EdgeInsets.all(24.0),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Row(
+              children: [
+                Icon(Icons.auto_awesome, color: Colors.white, size: 24),
+                const SizedBox(width: 8),
+                Text(
+                  'Word of the Day',
+                  style: Theme.of(context).textTheme.titleLarge?.copyWith(
+                    fontWeight: FontWeight.bold,
+                    color: Colors.white,
+                  ),
+                ),
+              ],
+            ),
+            const SizedBox(height: 20),
+            Text(
+              'Sign in to discover your daily word!',
+              style: Theme.of(context).textTheme.headlineSmall?.copyWith(
+                color: Colors.white,
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+  
+  Widget _buildWordOfTheDayLoading(BuildContext context) {
+    return Container(
+      decoration: BoxDecoration(
+        gradient: LinearGradient(
+          colors: [
+            Theme.of(context).colorScheme.primary,
+            Theme.of(context).colorScheme.primary.withOpacity(0.8),
+          ],
+          begin: Alignment.topLeft,
+          end: Alignment.bottomRight,
+        ),
+        borderRadius: BorderRadius.circular(20),
+      ),
+      child: Padding(
+        padding: const EdgeInsets.all(24.0),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Row(
+              children: [
+                Icon(Icons.auto_awesome, color: Colors.white, size: 24),
+                const SizedBox(width: 8),
+                Text(
+                  'Word of the Day',
+                  style: Theme.of(context).textTheme.titleLarge?.copyWith(
+                    fontWeight: FontWeight.bold,
+                    color: Colors.white,
+                  ),
+                ),
+              ],
+            ),
+            const SizedBox(height: 20),
+            const Center(
+              child: CircularProgressIndicator(color: Colors.white),
+            ),
+            const SizedBox(height: 20),
+            Center(
+              child: Text(
+                'Generating your daily word...',
+                style: Theme.of(context).textTheme.bodyLarge?.copyWith(
+                  color: Colors.white.withOpacity(0.9),
+                ),
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+  
+  Widget _buildWordOfTheDayError(BuildContext context) {
+    return Container(
+      decoration: BoxDecoration(
+        gradient: LinearGradient(
+          colors: [
+            Colors.red.withOpacity(0.7),
+            Colors.red.withOpacity(0.5),
+          ],
+          begin: Alignment.topLeft,
+          end: Alignment.bottomRight,
+        ),
+        borderRadius: BorderRadius.circular(20),
+      ),
+      child: Padding(
+        padding: const EdgeInsets.all(24.0),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Row(
+              children: [
+                Icon(Icons.error_outline, color: Colors.white, size: 24),
+                const SizedBox(width: 8),
+                Text(
+                  'Word of the Day',
+                  style: Theme.of(context).textTheme.titleLarge?.copyWith(
+                    fontWeight: FontWeight.bold,
+                    color: Colors.white,
+                  ),
+                ),
+              ],
+            ),
+            const SizedBox(height: 20),
+            Text(
+              'Unable to load today\'s word. Please check your connection and try again.',
+              style: Theme.of(context).textTheme.bodyLarge?.copyWith(
+                color: Colors.white.withOpacity(0.9),
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+  
+  Future<void> _speakWord(String word, {bool slowly = false}) async {
+    try {
+      final ttsService = TTSService();
+      if (slowly) {
+        await ttsService.speakSlowly(word);
+      } else {
+        await ttsService.speak(word);
+      }
+    } catch (e) {
+      // Handle TTS errors silently
+    }
   }
 }
