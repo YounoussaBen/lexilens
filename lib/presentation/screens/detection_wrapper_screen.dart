@@ -3,7 +3,7 @@ import 'package:camera/camera.dart';
 import 'realtime_detection_screen.dart';
 
 class DetectionWrapperScreen extends StatefulWidget {
-  const DetectionWrapperScreen({Key? key}) : super(key: key);
+  const DetectionWrapperScreen({super.key});
 
   @override
   State<DetectionWrapperScreen> createState() => _DetectionWrapperScreenState();

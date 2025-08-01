@@ -294,7 +294,7 @@ class _CameraDetectionContentState extends State<CameraDetectionContent> {
       }
       return Stack(
         children: [
-          RealTimeObjectDetection(cameras: cameras!, onClose: _onCloseCamera),
+          RealTimeObjectDetection(cameras: cameras!),
           Positioned(
             top: 16,
             right: 16,

@@ -5,6 +5,7 @@ import '../../../core/services/word_of_the_day_service.dart';
 import '../../../core/services/gemini_service.dart';
 import '../../../core/services/tts_service.dart';
 import '../../providers/auth_provider.dart';
+import '../../providers/saved_words_provider.dart';
 
 /// Home screen featuring Word of the Day and learning tools
 class HomeScreen extends ConsumerWidget {
@@ -42,7 +43,7 @@ class HomeScreen extends ConsumerWidget {
                       const SizedBox(height: 24),
 
                       // Saved Words
-                      _buildSavedWords(context),
+                      _buildSavedWords(context, ref),
                       const SizedBox(height: 32),
 
                       // Discovery Section
@@ -218,8 +219,8 @@ class HomeScreen extends ConsumerWidget {
     );
   }
 
-  Widget _buildSavedWords(BuildContext context) {
-    final savedWords = ['Apple', 'Chair', 'Book', 'Phone', 'Car'];
+  Widget _buildSavedWords(BuildContext context, WidgetRef ref) {
+    final recentWordsAsync = ref.watch(recentWordsProvider);
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
@@ -235,51 +236,124 @@ class HomeScreen extends ConsumerWidget {
             ),
             TextButton(
               onPressed: () {
-                // TODO: Navigate to all saved words
+                context.go('/review');
               },
               child: const Text('View All'),
             ),
           ],
         ),
         const SizedBox(height: 16),
-        SizedBox(
-          height: 100,
-          child: ListView.separated(
-            scrollDirection: Axis.horizontal,
-            itemCount: savedWords.length,
-            separatorBuilder: (context, index) => const SizedBox(width: 12),
-            itemBuilder: (context, index) {
-              return _buildWordCard(context, savedWords[index]);
-            },
+        recentWordsAsync.when(
+          data: (words) {
+            if (words.isEmpty) {
+              return _buildEmptySavedWords(context);
+            }
+            return SizedBox(
+              height: 100,
+              child: ListView.separated(
+                scrollDirection: Axis.horizontal,
+                itemCount: words.take(5).length,
+                separatorBuilder: (context, index) => const SizedBox(width: 12),
+                itemBuilder: (context, index) {
+                  final word = words[index];
+                  return _buildWordCard(context, word.word, word.confidence);
+                },
+              ),
+            );
+          },
+          loading: () => SizedBox(
+            height: 100,
+            child: ListView.separated(
+              scrollDirection: Axis.horizontal,
+              itemCount: 3,
+              separatorBuilder: (context, index) => const SizedBox(width: 12),
+              itemBuilder: (context, index) => _buildWordCardSkeleton(context),
+            ),
           ),
+          error: (_, __) => _buildEmptySavedWords(context),
         ),
       ],
     );
   }
 
-  Widget _buildWordCard(BuildContext context, String word) {
+  Widget _buildEmptySavedWords(BuildContext context) {
+    return Container(
+      height: 100,
+      decoration: BoxDecoration(
+        color: Theme.of(context).colorScheme.surfaceContainerHighest,
+        borderRadius: BorderRadius.circular(16),
+      ),
+      child: Center(
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            Icon(
+              Icons.camera_alt_outlined,
+              color: Theme.of(context).colorScheme.onSurface.withOpacity(0.5),
+              size: 24,
+            ),
+            const SizedBox(height: 4),
+            Text(
+              'Start detecting objects to save words!',
+              style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                color: Theme.of(context).colorScheme.onSurface.withOpacity(0.7),
+              ),
+              textAlign: TextAlign.center,
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildWordCardSkeleton(BuildContext context) {
+    return Container(
+      width: 120,
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: Theme.of(context).colorScheme.surfaceContainer,
+        borderRadius: BorderRadius.circular(16),
+      ),
+      child: Column(
+        mainAxisAlignment: MainAxisAlignment.center,
+        children: [
+          Container(
+            width: 28,
+            height: 28,
+            decoration: BoxDecoration(
+              color: Theme.of(context).colorScheme.surfaceContainerHighest,
+              borderRadius: BorderRadius.circular(14),
+            ),
+          ),
+          const SizedBox(height: 8),
+          Container(
+            width: 60,
+            height: 16,
+            decoration: BoxDecoration(
+              color: Theme.of(context).colorScheme.surfaceContainerHighest,
+              borderRadius: BorderRadius.circular(8),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildWordCard(BuildContext context, String word, double confidence) {
     return GestureDetector(
       onTap: () => context.go(
         '/chat',
         extra: {
-          'wordContext': {'word': word},
-          'contextType': 'saved_word',
+          'wordContext': word,
+          'definition': 'Discuss this word with AI tutor',
         },
       ),
       child: Container(
         width: 120,
         padding: const EdgeInsets.all(16),
         decoration: BoxDecoration(
-          color: Colors.white,
+          color: Theme.of(context).colorScheme.surfaceContainer,
           borderRadius: BorderRadius.circular(16),
-          border: Border.all(color: Colors.grey[200]!),
-          boxShadow: [
-            BoxShadow(
-              color: Colors.black.withOpacity(0.05),
-              blurRadius: 8,
-              offset: const Offset(0, 2),
-            ),
-          ],
         ),
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
@@ -291,11 +365,32 @@ class HomeScreen extends ConsumerWidget {
             ),
             const SizedBox(height: 8),
             Text(
-              word,
+              word.toUpperCase(),
               style: Theme.of(
                 context,
-              ).textTheme.bodyMedium?.copyWith(fontWeight: FontWeight.w500),
+              ).textTheme.bodyMedium?.copyWith(
+                fontWeight: FontWeight.w600,
+                color: Theme.of(context).colorScheme.onSurface,
+              ),
               textAlign: TextAlign.center,
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
+            ),
+            const SizedBox(height: 4),
+            Container(
+              padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+              decoration: BoxDecoration(
+                color: _getConfidenceColor(confidence).withOpacity(0.2),
+                borderRadius: BorderRadius.circular(8),
+              ),
+              child: Text(
+                '${(confidence * 100).toInt()}%',
+                style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                  color: _getConfidenceColor(confidence),
+                  fontWeight: FontWeight.w500,
+                  fontSize: 10,
+                ),
+              ),
             ),
           ],
         ),
@@ -303,13 +398,18 @@ class HomeScreen extends ConsumerWidget {
     );
   }
 
+  Color _getConfidenceColor(double confidence) {
+    if (confidence >= 0.8) return Colors.green;
+    if (confidence >= 0.6) return Colors.orange;
+    return Colors.red;
+  }
+
   Widget _buildDiscoverySection(BuildContext context) {
     return Container(
       width: double.infinity,
       decoration: BoxDecoration(
-        color: Colors.white,
+        color: Theme.of(context).colorScheme.surfaceContainer,
         borderRadius: BorderRadius.circular(24),
-        border: Border.all(color: Colors.grey[200]!),
       ),
       child: InkWell(
         onTap: () => context.go('/discovery'),
@@ -321,13 +421,13 @@ class HomeScreen extends ConsumerWidget {
               Container(
                 padding: const EdgeInsets.all(24),
                 decoration: BoxDecoration(
-                  color: Theme.of(context).colorScheme.primary.withOpacity(0.1),
+                  color: Theme.of(context).colorScheme.primaryContainer,
                   shape: BoxShape.circle,
                 ),
                 child: Icon(
                   Icons.center_focus_strong_outlined,
                   size: 48,
-                  color: Theme.of(context).colorScheme.primary,
+                  color: Theme.of(context).colorScheme.onPrimaryContainer,
                 ),
               ),
               const SizedBox(height: 24),
@@ -335,14 +435,15 @@ class HomeScreen extends ConsumerWidget {
                 'Start Learning',
                 style: Theme.of(context).textTheme.headlineSmall?.copyWith(
                   fontWeight: FontWeight.bold,
+                  color: Theme.of(context).colorScheme.onSurface,
                 ),
               ),
               const SizedBox(height: 12),
               Text(
                 'Point your camera at objects to discover and learn new vocabulary words',
-                style: Theme.of(
-                  context,
-                ).textTheme.bodyLarge?.copyWith(color: Colors.grey[600]),
+                style: Theme.of(context).textTheme.bodyLarge?.copyWith(
+                  color: Theme.of(context).colorScheme.onSurface.withOpacity(0.7),
+                ),
                 textAlign: TextAlign.center,
               ),
             ],

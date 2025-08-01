@@ -1,7 +1,10 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:go_router/go_router.dart';
+import '../../providers/saved_words_provider.dart';
+import '../../../core/services/tts_service.dart';
 
-/// Review screen with flashcard review and spaced repetition
+/// Review screen with saved words
 class ReviewScreen extends ConsumerStatefulWidget {
   const ReviewScreen({super.key});
 
@@ -9,565 +12,440 @@ class ReviewScreen extends ConsumerStatefulWidget {
   ConsumerState<ReviewScreen> createState() => _ReviewScreenState();
 }
 
-class _ReviewScreenState extends ConsumerState<ReviewScreen>
-    with TickerProviderStateMixin {
-  late TabController _tabController;
+class _ReviewScreenState extends ConsumerState<ReviewScreen> {
+  final TTSService _ttsService = TTSService();
+  bool _isGridView = false;
+  final TextEditingController _searchController = TextEditingController();
+  String _searchQuery = '';
 
   @override
   void initState() {
     super.initState();
-    _tabController = TabController(length: 3, vsync: this);
+    _ttsService.initialize();
   }
 
   @override
   void dispose() {
-    _tabController.dispose();
+    _ttsService.dispose();
+    _searchController.dispose();
     super.dispose();
   }
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(
-        title: const Text('Review'),
-        bottom: TabBar(
-          controller: _tabController,
-          tabs: const [
-            Tab(text: 'Due Now', icon: Icon(Icons.schedule_outlined)),
-            Tab(text: 'All Words', icon: Icon(Icons.library_books_outlined)),
-            Tab(text: 'Statistics', icon: Icon(Icons.analytics_outlined)),
+      body: SafeArea(
+        child: Padding(
+          padding: const EdgeInsets.fromLTRB(20, 20, 20, 0),
+          child: Column(
+            children: [
+              // Header matching other screens
+              _buildHeader(context),
+              const SizedBox(height: 24),
+              
+              // Search bar
+              _buildSearchBar(context),
+              const SizedBox(height: 16),
+              
+              // Words list
+              Expanded(
+                child: _buildWordsList(context),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildHeader(BuildContext context) {
+    return Row(
+      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+      children: [
+        Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text(
+              'My Words',
+              style: Theme.of(context).textTheme.headlineLarge?.copyWith(
+                fontWeight: FontWeight.bold,
+                color: Theme.of(context).colorScheme.primary,
+              ),
+            ),
+            Text(
+              'Your saved vocabulary',
+              style: Theme.of(context).textTheme.bodyLarge?.copyWith(
+                color: Colors.grey[600],
+              ),
+            ),
           ],
         ),
-        actions: [
-          IconButton(
-            icon: const Icon(Icons.settings_outlined),
-            onPressed: () => _showSettingsDialog(context),
-          ),
-        ],
+        Row(
+          children: [
+            IconButton(
+              onPressed: () {
+                setState(() {
+                  _isGridView = !_isGridView;
+                });
+              },
+              icon: Icon(_isGridView ? Icons.view_list : Icons.grid_view),
+              style: IconButton.styleFrom(
+                backgroundColor: Theme.of(context).colorScheme.surfaceContainer,
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(12),
+                ),
+              ),
+            ),
+            const SizedBox(width: 8),
+            IconButton(
+              onPressed: () => _showQuizDialog(),
+              icon: const Icon(Icons.quiz),
+              style: IconButton.styleFrom(
+                backgroundColor: Theme.of(context).colorScheme.primaryContainer,
+                foregroundColor: Theme.of(context).colorScheme.onPrimaryContainer,
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(12),
+                ),
+              ),
+            ),
+          ],
+        ),
+      ],
+    );
+  }
+
+  Widget _buildSearchBar(BuildContext context) {
+    return Container(
+      decoration: BoxDecoration(
+        color: Theme.of(context).colorScheme.surfaceContainer,
+        borderRadius: BorderRadius.circular(16),
       ),
-      body: TabBarView(
-        controller: _tabController,
+      child: TextField(
+        controller: _searchController,
+        decoration: InputDecoration(
+          hintText: 'Search your words...',
+          prefixIcon: const Icon(Icons.search),
+          suffixIcon: _searchQuery.isNotEmpty
+              ? IconButton(
+                  onPressed: () {
+                    _searchController.clear();
+                    setState(() {
+                      _searchQuery = '';
+                    });
+                  },
+                  icon: const Icon(Icons.clear),
+                )
+              : null,
+          border: InputBorder.none,
+          contentPadding: const EdgeInsets.symmetric(
+            horizontal: 16,
+            vertical: 16,
+          ),
+        ),
+        onChanged: (value) {
+          setState(() {
+            _searchQuery = value;
+          });
+        },
+      ),
+    );
+  }
+
+  Widget _buildWordsList(BuildContext context) {
+    final savedWordsAsync = ref.watch(savedWordsProvider);
+    
+    return savedWordsAsync.when(
+      data: (words) {
+        // Filter words based on search query
+        final filteredWords = _searchQuery.isEmpty
+            ? words
+            : words.where((word) =>
+                word.word.toLowerCase().contains(_searchQuery.toLowerCase()) ||
+                word.definition.toLowerCase().contains(_searchQuery.toLowerCase())
+              ).toList();
+
+        if (filteredWords.isEmpty) {
+          return _buildEmptyState();
+        }
+
+        return _isGridView 
+            ? _buildGridView(filteredWords)
+            : _buildListView(filteredWords);
+      },
+      loading: () => const Center(child: CircularProgressIndicator()),
+      error: (error, stack) => Center(
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            const Icon(Icons.error_outline, size: 64, color: Colors.grey),
+            const SizedBox(height: 16),
+            Text('Error loading words: $error'),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildEmptyState() {
+    if (_searchQuery.isNotEmpty) {
+      return const Center(
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            Icon(Icons.search_off, size: 64, color: Colors.grey),
+            SizedBox(height: 16),
+            Text(
+              'No words found',
+              style: TextStyle(fontSize: 18, color: Colors.grey),
+            ),
+            SizedBox(height: 8),
+            Text(
+              'Try adjusting your search terms',
+              style: TextStyle(color: Colors.grey),
+            ),
+          ],
+        ),
+      );
+    }
+
+    return const Center(
+      child: Column(
+        mainAxisAlignment: MainAxisAlignment.center,
         children: [
-          _buildDueNowTab(),
-          _buildAllWordsTab(),
-          _buildStatisticsTab(),
+          Icon(Icons.bookmark_border, size: 64, color: Colors.grey),
+          SizedBox(height: 16),
+          Text(
+            'No saved words yet',
+            style: TextStyle(fontSize: 18, color: Colors.grey),
+          ),
+          SizedBox(height: 8),
+          Text(
+            'Start detecting objects to save words!',
+            style: TextStyle(color: Colors.grey),
+            textAlign: TextAlign.center,
+          ),
         ],
       ),
     );
   }
 
-  Widget _buildDueNowTab() {
-    return Column(
-      children: [
-        // Progress indicator
-        Container(
-          padding: const EdgeInsets.all(16.0),
+  Widget _buildListView(List words) {
+    return ListView.builder(
+      padding: const EdgeInsets.only(bottom: 20),
+      itemCount: words.length,
+      itemBuilder: (context, index) {
+        final word = words[index];
+        return _buildWordCard(word, false);
+      },
+    );
+  }
+
+  Widget _buildGridView(List words) {
+    return GridView.builder(
+      padding: const EdgeInsets.only(bottom: 20),
+      gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
+        crossAxisCount: 2,
+        childAspectRatio: 0.75,
+        crossAxisSpacing: 12,
+        mainAxisSpacing: 12,
+      ),
+      itemCount: words.length,
+      itemBuilder: (context, index) {
+        final word = words[index];
+        return _buildWordCard(word, true);
+      },
+    );
+  }
+
+  Widget _buildWordCard(dynamic word, bool isGrid) {
+    return Container(
+      margin: isGrid ? EdgeInsets.zero : const EdgeInsets.only(bottom: 12),
+      decoration: BoxDecoration(
+        gradient: LinearGradient(
+          colors: [
+            Theme.of(context).colorScheme.primaryContainer,
+            Theme.of(context).colorScheme.primaryContainer.withOpacity(0.7),
+          ],
+          begin: Alignment.topLeft,
+          end: Alignment.bottomRight,
+        ),
+        borderRadius: BorderRadius.circular(16),
+      ),
+      child: InkWell(
+        onTap: () {
+          context.push('/chat', extra: {
+            'wordContext': word.word,
+            'definition': word.definition,
+          });
+        },
+        borderRadius: BorderRadius.circular(16),
+        child: Padding(
+          padding: const EdgeInsets.all(16),
           child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
             children: [
+              // Header with word and actions
               Row(
                 mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  Text(
-                    'Today\'s Review',
-                    style: Theme.of(context).textTheme.titleLarge?.copyWith(
-                      fontWeight: FontWeight.bold,
-                    ),
-                  ),
-                  Container(
-                    padding: const EdgeInsets.symmetric(
-                      horizontal: 12,
-                      vertical: 6,
-                    ),
-                    decoration: BoxDecoration(
-                      color: const Color(0xFF0080FF).withOpacity(0.1),
-                      borderRadius: BorderRadius.circular(20),
-                      border: Border.all(color: const Color(0xFF0080FF).withOpacity(0.3)),
-                    ),
+                  Expanded(
                     child: Text(
-                      '12/25 done',
-                      style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                        color: const Color(0xFF0080FF),
-                        fontWeight: FontWeight.w600,
+                      word.word.toUpperCase(),
+                      style: Theme.of(context).textTheme.titleLarge?.copyWith(
+                        fontWeight: FontWeight.bold,
+                        color: Theme.of(context).colorScheme.onPrimaryContainer,
                       ),
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
                     ),
                   ),
-                ],
-              ),
-              const SizedBox(height: 12),
-              LinearProgressIndicator(
-                value: 0.48,
-                backgroundColor: Colors.grey[200],
-                valueColor: const AlwaysStoppedAnimation<Color>(
-                  Color(0xFF0080FF),
-                ),
-                borderRadius: BorderRadius.circular(8),
-              ),
-            ],
-          ),
-        ),
-
-        Expanded(
-          child: Center(
-            child: Padding(
-              padding: const EdgeInsets.all(24.0),
-              child: Column(
-                mainAxisAlignment: MainAxisAlignment.center,
-                children: [
-                  Container(
-                    width: double.infinity,
-                    height: 300,
-                    padding: const EdgeInsets.all(24.0),
-                    decoration: BoxDecoration(
-                      color: Colors.white,
-                      borderRadius: BorderRadius.circular(20),
-                      border: Border.all(color: Colors.grey[200]!),
-                    ),
-                    child: Column(
-                      mainAxisAlignment: MainAxisAlignment.center,
-                      children: [
-                        Icon(
-                          Icons.image_outlined,
-                          size: 80,
-                          color: const Color(0xFF0080FF),
-                        ),
-                          const SizedBox(height: 20),
-                          Text(
-                            'Apple',
-                            style: Theme.of(context).textTheme.headlineMedium
-                                ?.copyWith(fontWeight: FontWeight.bold),
-                          ),
-                          const SizedBox(height: 8),
-                          Text(
-                            'A round fruit that grows on trees',
-                            style: Theme.of(context).textTheme.bodyLarge,
-                            textAlign: TextAlign.center,
-                          ),
-                          const SizedBox(height: 16),
-                          Container(
-                            padding: const EdgeInsets.symmetric(
-                              horizontal: 12,
-                              vertical: 6,
-                            ),
-                            decoration: BoxDecoration(
-                              color: Theme.of(
-                                context,
-                              ).colorScheme.secondaryContainer,
-                              borderRadius: BorderRadius.circular(16),
-                            ),
-                            child: Text(
-                              'Discovered 2 days ago',
-                              style: Theme.of(context).textTheme.bodySmall
-                                  ?.copyWith(
-                                    color: Theme.of(
-                                      context,
-                                    ).colorScheme.onSecondaryContainer,
-                                  ),
-                            ),
-                          ),
-                        ],
-                      ),
-                    ),
-                  const SizedBox(height: 32),
                   Row(
-                    mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+                    mainAxisSize: MainAxisSize.min,
                     children: [
-                      _buildReviewButton(
-                        'Again',
-                        Icons.close,
-                        Colors.red,
-                        () => _handleReviewAnswer('again'),
+                      InkWell(
+                        onTap: () => _ttsService.speakSlowly(word.word),
+                        borderRadius: BorderRadius.circular(20),
+                        child: Container(
+                          padding: const EdgeInsets.all(6),
+                          decoration: BoxDecoration(
+                            color: Colors.white.withOpacity(0.2),
+                            shape: BoxShape.circle,
+                          ),
+                          child: Icon(
+                            Icons.volume_up,
+                            size: 18,
+                            color: Theme.of(context).colorScheme.onPrimaryContainer,
+                          ),
+                        ),
                       ),
-                      _buildReviewButton(
-                        'Hard',
-                        Icons.remove,
-                        Colors.orange,
-                        () => _handleReviewAnswer('hard'),
-                      ),
-                      _buildReviewButton(
-                        'Good',
-                        Icons.check,
-                        Colors.green,
-                        () => _handleReviewAnswer('good'),
-                      ),
-                      _buildReviewButton(
-                        'Easy',
-                        Icons.done_all,
-                        Colors.blue,
-                        () => _handleReviewAnswer('easy'),
+                      const SizedBox(width: 4),
+                      InkWell(
+                        onTap: () => ref.read(toggleFavoriteWordUseCaseProvider)(word.id),
+                        borderRadius: BorderRadius.circular(20),
+                        child: Container(
+                          padding: const EdgeInsets.all(6),
+                          decoration: BoxDecoration(
+                            color: Colors.white.withOpacity(0.2),
+                            shape: BoxShape.circle,
+                          ),
+                          child: Icon(
+                            word.isFavorite ? Icons.favorite : Icons.favorite_border,
+                            size: 18,
+                            color: word.isFavorite ? Colors.red : Theme.of(context).colorScheme.onPrimaryContainer,
+                          ),
+                        ),
                       ),
                     ],
                   ),
                 ],
               ),
-            ),
-          ),
-        ),
-      ],
-    );
-  }
 
-  Widget _buildReviewButton(
-    String label,
-    IconData icon,
-    Color color,
-    VoidCallback onPressed,
-  ) {
-    return Column(
-      children: [
-        FloatingActionButton(
-          onPressed: onPressed,
-          backgroundColor: color,
-          foregroundColor: Colors.white,
-          child: Icon(icon),
-        ),
-        const SizedBox(height: 8),
-        Text(
-          label,
-          style: Theme.of(
-            context,
-          ).textTheme.bodySmall?.copyWith(fontWeight: FontWeight.w500),
-        ),
-      ],
-    );
-  }
+              const SizedBox(height: 12),
 
-  Widget _buildAllWordsTab() {
-    return Column(
-      children: [
-        // Search and filter bar
-        Padding(
-          padding: const EdgeInsets.all(16.0),
-          child: Row(
-            children: [
+              // Definition
               Expanded(
-                child: SearchBar(
-                  hintText: 'Search vocabulary...',
-                  leading: const Icon(Icons.search),
-                  padding: const WidgetStatePropertyAll(
-                    EdgeInsets.symmetric(horizontal: 16.0),
+                child: Text(
+                  word.definition,
+                  style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                    color: Theme.of(context).colorScheme.onPrimaryContainer.withOpacity(0.9),
+                    height: 1.4,
                   ),
+                  maxLines: isGrid ? 4 : 2,
+                  overflow: TextOverflow.ellipsis,
                 ),
               ),
-              const SizedBox(width: 12),
-              IconButton(
-                icon: const Icon(Icons.filter_list),
-                onPressed: () => _showFilterDialog(context),
-              ),
-            ],
-          ),
-        ),
 
-        // Vocabulary list
-        Expanded(
-          child: ListView.separated(
-            padding: const EdgeInsets.symmetric(horizontal: 16.0),
-            itemCount: 10,
-            separatorBuilder: (context, index) => const SizedBox(height: 8),
-            itemBuilder: (context, index) {
-              final words = [
-                'Apple',
-                'Chair',
-                'Book',
-                'Phone',
-                'Car',
-                'Tree',
-                'House',
-                'Dog',
-                'Cat',
-                'Ball',
-              ];
-              final confidenceLevels = [
-                'Mastered',
-                'Good',
-                'Learning',
-                'New',
-                'Hard',
-              ];
-              return _buildVocabularyCard(
-                words[index],
-                confidenceLevels[index % confidenceLevels.length],
-                index,
-              );
-            },
-          ),
-        ),
-      ],
-    );
-  }
+              const SizedBox(height: 12),
 
-  Widget _buildVocabularyCard(String word, String level, int index) {
-    Color levelColor;
-    IconData levelIcon;
-
-    switch (level) {
-      case 'Mastered':
-        levelColor = Colors.green;
-        levelIcon = Icons.star;
-        break;
-      case 'Good':
-        levelColor = Colors.blue;
-        levelIcon = Icons.thumb_up;
-        break;
-      case 'Learning':
-        levelColor = Colors.orange;
-        levelIcon = Icons.school;
-        break;
-      case 'New':
-        levelColor = Colors.purple;
-        levelIcon = Icons.fiber_new;
-        break;
-      default:
-        levelColor = Colors.red;
-        levelIcon = Icons.priority_high;
-    }
-
-    return Card(
-      child: ListTile(
-        leading: CircleAvatar(
-          backgroundColor: Theme.of(context).colorScheme.primaryContainer,
-          child: Icon(
-            Icons.image,
-            color: Theme.of(context).colorScheme.onPrimaryContainer,
-          ),
-        ),
-        title: Text(word, style: const TextStyle(fontWeight: FontWeight.w500)),
-        subtitle: Text('Added ${index + 1} days ago'),
-        trailing: Container(
-          padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-          decoration: BoxDecoration(
-            color: levelColor.withOpacity(0.1),
-            borderRadius: BorderRadius.circular(12),
-            border: Border.all(color: levelColor.withOpacity(0.3)),
-          ),
-          child: Row(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              Icon(levelIcon, size: 16, color: levelColor),
-              const SizedBox(width: 4),
-              Text(
-                level,
-                style: TextStyle(
-                  color: levelColor,
-                  fontWeight: FontWeight.w500,
-                  fontSize: 12,
-                ),
-              ),
-            ],
-          ),
-        ),
-        onTap: () => _showWordDetails(word, level),
-      ),
-    );
-  }
-
-  Widget _buildStatisticsTab() {
-    return SingleChildScrollView(
-      padding: const EdgeInsets.all(16.0),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Text(
-            'Learning Statistics',
-            style: Theme.of(
-              context,
-            ).textTheme.titleLarge?.copyWith(fontWeight: FontWeight.bold),
-          ),
-          const SizedBox(height: 20),
-
-          // Overall stats cards
-          Row(
-            children: [
-              Expanded(
-                child: _buildStatCard(
-                  'Total Words',
-                  '127',
-                  Icons.library_books,
-                  Colors.blue,
-                ),
-              ),
-              const SizedBox(width: 12),
-              Expanded(
-                child: _buildStatCard(
-                  'Mastered',
-                  '45',
-                  Icons.star,
-                  Colors.green,
-                ),
-              ),
-            ],
-          ),
-          const SizedBox(height: 12),
-          Row(
-            children: [
-              Expanded(
-                child: _buildStatCard(
-                  'Learning',
-                  '67',
-                  Icons.school,
-                  Colors.orange,
-                ),
-              ),
-              const SizedBox(width: 12),
-              Expanded(
-                child: _buildStatCard(
-                  'Accuracy',
-                  '89%',
-                  Icons.tablet,
-                  Colors.purple,
-                ),
-              ),
-            ],
-          ),
-          const SizedBox(height: 24),
-
-          // Recent activity
-          Text(
-            'Recent Activity',
-            style: Theme.of(
-              context,
-            ).textTheme.titleMedium?.copyWith(fontWeight: FontWeight.bold),
-          ),
-          const SizedBox(height: 12),
-          Card(
-            child: Padding(
-              padding: const EdgeInsets.all(16.0),
-              child: Column(
+              // Footer with stats
+              Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
                 children: [
-                  _buildActivityItem('Words reviewed today', '12'),
-                  const Divider(),
-                  _buildActivityItem('New words discovered', '3'),
-                  const Divider(),
-                  _buildActivityItem('Current streak', '7 days'),
-                  const Divider(),
-                  _buildActivityItem('Longest streak', '23 days'),
+                  Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                    decoration: BoxDecoration(
+                      color: Colors.white.withOpacity(0.2),
+                      borderRadius: BorderRadius.circular(12),
+                    ),
+                    child: Text(
+                      '${(word.confidence * 100).toInt()}%',
+                      style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                        color: Theme.of(context).colorScheme.onPrimaryContainer,
+                        fontWeight: FontWeight.w600,
+                      ),
+                    ),
+                  ),
+                  Text(
+                    _formatDate(word.detectedAt),
+                    style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                      color: Theme.of(context).colorScheme.onPrimaryContainer.withOpacity(0.7),
+                    ),
+                  ),
                 ],
               ),
-            ),
+            ],
           ),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildStatCard(
-    String title,
-    String value,
-    IconData icon,
-    Color color,
-  ) {
-    return Card(
-      child: Padding(
-        padding: const EdgeInsets.all(16.0),
-        child: Column(
-          children: [
-            Icon(icon, size: 32, color: color),
-            const SizedBox(height: 8),
-            Text(
-              value,
-              style: Theme.of(context).textTheme.headlineSmall?.copyWith(
-                fontWeight: FontWeight.bold,
-                color: color,
-              ),
-            ),
-            Text(
-              title,
-              style: Theme.of(context).textTheme.bodySmall,
-              textAlign: TextAlign.center,
-            ),
-          ],
         ),
       ),
     );
   }
 
-  Widget _buildActivityItem(String label, String value) {
-    return Row(
-      mainAxisAlignment: MainAxisAlignment.spaceBetween,
-      children: [
-        Text(label),
-        Text(value, style: const TextStyle(fontWeight: FontWeight.bold)),
-      ],
-    );
+  String _formatDate(DateTime date) {
+    final now = DateTime.now();
+    final difference = now.difference(date);
+
+    if (difference.inDays > 7) {
+      return '${date.month}/${date.day}';
+    } else if (difference.inDays > 0) {
+      return '${difference.inDays}d ago';
+    } else if (difference.inHours > 0) {
+      return '${difference.inHours}h ago';
+    } else if (difference.inMinutes > 0) {
+      return '${difference.inMinutes}m ago';
+    } else {
+      return 'Just now';
+    }
   }
 
-  void _handleReviewAnswer(String difficulty) {
-    // TODO: Implement spaced repetition logic
-    ScaffoldMessenger.of(
-      context,
-    ).showSnackBar(SnackBar(content: Text('Marked as $difficulty')));
-  }
-
-  void _showWordDetails(String word, String level) {
+  void _showQuizDialog() {
     showDialog(
       context: context,
       builder: (context) => AlertDialog(
-        title: Text(word),
-        content: Column(
-          mainAxisSize: MainAxisSize.min,
-          crossAxisAlignment: CrossAxisAlignment.start,
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(16),
+        ),
+        title: Row(
           children: [
-            Text('Level: $level'),
-            const SizedBox(height: 8),
-            const Text('Definition: A sample definition for this word.'),
-            const SizedBox(height: 8),
-            const Text('Example: "This is an example sentence."'),
+            Icon(
+              Icons.quiz,
+              color: Theme.of(context).colorScheme.primary,
+            ),
+            const SizedBox(width: 8),
+            const Text('Start Quiz'),
           ],
+        ),
+        content: const Text(
+          'Test your knowledge of saved words with an AI-powered quiz! The tutor will create questions based on your vocabulary.',
         ),
         actions: [
           TextButton(
             onPressed: () => Navigator.of(context).pop(),
-            child: const Text('Close'),
+            child: const Text('Cancel'),
           ),
           ElevatedButton(
             onPressed: () {
               Navigator.of(context).pop();
-              // TODO: Start review for this specific word
+              context.push('/chat', extra: {
+                'startQuiz': true,
+              });
             },
-            child: const Text('Review Now'),
-          ),
-        ],
-      ),
-    );
-  }
-
-  void _showSettingsDialog(BuildContext context) {
-    showDialog(
-      context: context,
-      builder: (context) => AlertDialog(
-        title: const Text('Review Settings'),
-        content: const Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Text('Configure your review preferences here.'),
-            // TODO: Add settings options
-          ],
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.of(context).pop(),
-            child: const Text('Close'),
-          ),
-        ],
-      ),
-    );
-  }
-
-  void _showFilterDialog(BuildContext context) {
-    showDialog(
-      context: context,
-      builder: (context) => AlertDialog(
-        title: const Text('Filter Vocabulary'),
-        content: const Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Text('Filter options will be implemented here.'),
-            // TODO: Add filter options
-          ],
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.of(context).pop(),
-            child: const Text('Close'),
+            style: ElevatedButton.styleFrom(
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(12),
+              ),
+            ),
+            child: const Text('Start Quiz'),
           ),
         ],
       ),
