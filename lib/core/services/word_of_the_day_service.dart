@@ -61,7 +61,7 @@ class WordOfTheDayService {
       return wordOfTheDay;
       
     } catch (e) {
-      print('Error getting word of the day: $e');
+      // Error getting word of the day: $e
       return null;
     }
   }
@@ -82,7 +82,7 @@ class WordOfTheDayService {
           .toList();
           
     } catch (e) {
-      print('Error getting word history: $e');
+      // Error getting word history: $e
       return [];
     }
   }
@@ -101,7 +101,7 @@ class WordOfTheDayService {
         'source': 'word_of_the_day',
       });
     } catch (e) {
-      print('Error marking word as learned: $e');
+      // Error marking word as learned: $e
     }
   }
   
@@ -135,7 +135,7 @@ class WordOfTheDayService {
       return await getWordOfTheDay(userId);
       
     } catch (e) {
-      print('Error force refreshing word: $e');
+      // Error force refreshing word: $e
       return null;
     }
   }
@@ -160,7 +160,7 @@ class WordOfTheDayService {
       await batch.commit();
       
     } catch (e) {
-      print('Error cleaning up old words: $e');
+      // Error cleaning up old words: $e
     }
   }
   
@@ -193,7 +193,7 @@ class WordOfTheDayService {
       };
       
     } catch (e) {
-      print('Error getting word stats: $e');
+      // Error getting word stats: $e
       return {'totalWords': 0, 'learnedWords': 0, 'streak': 0};
     }
   }
@@ -225,7 +225,7 @@ class WordOfTheDayService {
       return streak;
       
     } catch (e) {
-      print('Error calculating streak: $e');
+      // Error calculating streak: $e
       return 0;
     }
   }

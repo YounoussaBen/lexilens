@@ -526,7 +526,7 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
   }
 
   Widget _buildMarkdownContent(String text, {bool isUserMessage = false}) {
-    return Container(
+    return SizedBox(
       width: double.infinity,
       child: MarkdownBody(
         data: text,
@@ -544,7 +544,7 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
           ),
           em: TextStyle(
             color: isUserMessage
-                ? Colors.white.withOpacity(0.9)
+                ? Colors.white.withValues(alpha: 0.9)
                 : Colors.grey[800],
             fontStyle: FontStyle.italic,
             fontSize: 14,
@@ -566,7 +566,7 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
           ),
           code: TextStyle(
             backgroundColor: isUserMessage
-                ? Colors.white.withOpacity(0.2)
+                ? Colors.white.withValues(alpha: 0.2)
                 : Colors.grey[100],
             color: isUserMessage
                 ? Colors.white
@@ -575,7 +575,7 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
           ),
           blockquote: TextStyle(
             color: isUserMessage
-                ? Colors.white.withOpacity(0.8)
+                ? Colors.white.withValues(alpha: 0.8)
                 : Colors.grey[600],
             fontStyle: FontStyle.italic,
           ),

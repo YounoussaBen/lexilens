@@ -264,7 +264,7 @@ class _ReviewScreenState extends ConsumerState<ReviewScreen> {
         gradient: LinearGradient(
           colors: [
             Theme.of(context).colorScheme.primaryContainer,
-            Theme.of(context).colorScheme.primaryContainer.withOpacity(0.7),
+            Theme.of(context).colorScheme.primaryContainer.withValues(alpha: 0.7),
           ],
           begin: Alignment.topLeft,
           end: Alignment.bottomRight,
@@ -309,7 +309,7 @@ class _ReviewScreenState extends ConsumerState<ReviewScreen> {
                         child: Container(
                           padding: const EdgeInsets.all(6),
                           decoration: BoxDecoration(
-                            color: Colors.white.withOpacity(0.2),
+                            color: Colors.white.withValues(alpha: 0.2),
                             shape: BoxShape.circle,
                           ),
                           child: Icon(
@@ -326,7 +326,7 @@ class _ReviewScreenState extends ConsumerState<ReviewScreen> {
                         child: Container(
                           padding: const EdgeInsets.all(6),
                           decoration: BoxDecoration(
-                            color: Colors.white.withOpacity(0.2),
+                            color: Colors.white.withValues(alpha: 0.2),
                             shape: BoxShape.circle,
                           ),
                           child: Icon(
@@ -348,7 +348,7 @@ class _ReviewScreenState extends ConsumerState<ReviewScreen> {
                 child: Text(
                   word.definition,
                   style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                    color: Theme.of(context).colorScheme.onPrimaryContainer.withOpacity(0.9),
+                    color: Theme.of(context).colorScheme.onPrimaryContainer.withValues(alpha: 0.9),
                     height: 1.4,
                   ),
                   maxLines: isGrid ? 4 : 2,
@@ -365,7 +365,7 @@ class _ReviewScreenState extends ConsumerState<ReviewScreen> {
                   Container(
                     padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
                     decoration: BoxDecoration(
-                      color: Colors.white.withOpacity(0.2),
+                      color: Colors.white.withValues(alpha: 0.2),
                       borderRadius: BorderRadius.circular(12),
                     ),
                     child: Text(
@@ -379,7 +379,7 @@ class _ReviewScreenState extends ConsumerState<ReviewScreen> {
                   Text(
                     _formatDate(word.detectedAt),
                     style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                      color: Theme.of(context).colorScheme.onPrimaryContainer.withOpacity(0.7),
+                      color: Theme.of(context).colorScheme.onPrimaryContainer.withValues(alpha: 0.7),
                     ),
                   ),
                 ],

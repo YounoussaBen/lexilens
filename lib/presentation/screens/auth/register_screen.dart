@@ -34,7 +34,7 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
     final theme = Theme.of(context);
     final primary = theme.colorScheme.primary;
     final surface = theme.colorScheme.surface;
-    final border = theme.colorScheme.outline.withOpacity(0.08);
+    final border = theme.colorScheme.outline.withValues(alpha: 0.08);
 
     return Scaffold(
       backgroundColor: surface,
@@ -50,7 +50,7 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
                 Container(
                   padding: const EdgeInsets.all(20),
                   decoration: BoxDecoration(
-                    color: primary.withOpacity(0.08),
+                    color: primary.withValues(alpha: 0.08),
                     borderRadius: BorderRadius.circular(24),
                   ),
                   child: Column(
@@ -363,12 +363,12 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
                               const Text('Already have an account? '),
                               TextButton(
                                 onPressed: () => context.go('/login'),
-                                child: const Text('Sign In'),
                                 style: TextButton.styleFrom(
                                   foregroundColor: primary,
                                   textStyle: theme.textTheme.bodyMedium
                                       ?.copyWith(fontWeight: FontWeight.bold),
                                 ),
+                                child: const Text('Sign In'),
                               ),
                             ],
                           ),

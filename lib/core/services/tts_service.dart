@@ -27,7 +27,7 @@ class TTSService {
     
     // Set error handler
     _flutterTts.setErrorHandler((message) {
-      print('TTS Error: $message');
+      // TTS Error: $message - Error handling for production
     });
     
     _isInitialized = true;

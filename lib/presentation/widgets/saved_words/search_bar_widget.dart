@@ -28,7 +28,7 @@ class _SearchBarWidgetState extends State<SearchBarWidget> {
         hintText: 'Search saved words...',
         border: InputBorder.none,
         hintStyle: TextStyle(
-          color: theme.colorScheme.onSurface.withOpacity(0.6),
+          color: theme.colorScheme.onSurface.withValues(alpha: 0.6),
         ),
         suffixIcon: widget.controller.text.isNotEmpty
             ? IconButton(
