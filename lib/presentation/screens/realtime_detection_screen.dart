@@ -5,8 +5,9 @@ import 'package:tflite_v2/tflite_v2.dart';
 
 class RealTimeObjectDetection extends StatefulWidget {
   final List<CameraDescription> cameras;
+  final VoidCallback? onClose;
 
-  RealTimeObjectDetection({required this.cameras});
+  RealTimeObjectDetection({required this.cameras, this.onClose});
 
   @override
   _RealTimeObjectDetectionState createState() =>
@@ -47,11 +48,13 @@ class _RealTimeObjectDetectionState extends State<RealTimeObjectDetection> {
     final lensDirection = _controller.description.lensDirection;
     CameraDescription newDescription;
     if (lensDirection == CameraLensDirection.front) {
-      newDescription = widget.cameras.firstWhere((description) =>
-          description.lensDirection == CameraLensDirection.back);
+      newDescription = widget.cameras.firstWhere(
+        (description) => description.lensDirection == CameraLensDirection.back,
+      );
     } else {
-      newDescription = widget.cameras.firstWhere((description) =>
-          description.lensDirection == CameraLensDirection.front);
+      newDescription = widget.cameras.firstWhere(
+        (description) => description.lensDirection == CameraLensDirection.front,
+      );
     }
 
     initializeCamera(newDescription);
@@ -111,46 +114,47 @@ class _RealTimeObjectDetectionState extends State<RealTimeObjectDetection> {
     if (!_controller.value.isInitialized) {
       return Container();
     }
-    return Scaffold(
-      appBar: AppBar(
-        title: Text('Real-time Object Detection'),
-      ),
-      body: Column(
-        // mainAxisAlignment: MainAxisAlignment.center,
-
-        children: [
-          Container(
-            width: MediaQuery.of(context).size.width,
-            height: MediaQuery.of(context).size.height * 0.8,
-            child: Stack(
-              children: [
-                CameraPreview(_controller),
-                if (recognitions != null)
-                  BoundingBoxes(
-                    recognitions: recognitions!,
-                    previewH: imageHeight.toDouble(),
-                    previewW: imageWidth.toDouble(),
-                    screenH: MediaQuery.of(context).size.height * 0.8,
-                    screenW: MediaQuery.of(context).size.width,
-                  ),
-              ],
-            ),
-          ),
-          Row(
-            mainAxisAlignment: MainAxisAlignment.center,
+    return Column(
+      children: [
+        Expanded(
+          child: Stack(
             children: [
-              IconButton(
-                  onPressed: () {
-                    toggleCamera();
-                  },
-                  icon: Icon(
-                    Icons.camera_front,
-                    size: 30,
-                  ))
+              Positioned.fill(child: CameraPreview(_controller)),
+              if (recognitions != null)
+                BoundingBoxes(
+                  recognitions: recognitions!,
+                  previewH: imageHeight.toDouble(),
+                  previewW: imageWidth.toDouble(),
+                  screenH: MediaQuery.of(context).size.height,
+                  screenW: MediaQuery.of(context).size.width,
+                ),
+              if (widget.onClose != null)
+                Positioned(
+                  top: 16,
+                  right: 16,
+                  child: FloatingActionButton.small(
+                    onPressed: widget.onClose,
+                    child: const Icon(Icons.close),
+                    backgroundColor: Colors.white,
+                    foregroundColor: Colors.black,
+                    elevation: 2,
+                  ),
+                ),
             ],
-          )
-        ],
-      ),
+          ),
+        ),
+        Row(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            IconButton(
+              onPressed: () {
+                toggleCamera();
+              },
+              icon: Icon(Icons.camera_front, size: 30),
+            ),
+          ],
+        ),
+      ],
     );
   }
 }
@@ -186,10 +190,7 @@ class BoundingBoxes extends StatelessWidget {
           height: h,
           child: Container(
             decoration: BoxDecoration(
-              border: Border.all(
-                color: Colors.red,
-                width: 3,
-              ),
+              border: Border.all(color: Colors.red, width: 3),
             ),
             child: Text(
               "${rec["detectedClass"]} ${(rec["confidenceInClass"] * 100).toStringAsFixed(0)}% Width:${(w).ceil()} Heght: ${h.ceil()}",

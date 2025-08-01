@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import '../detection_wrapper_screen.dart';
+import 'package:camera/camera.dart';
+import '../realtime_detection_screen.dart';
 
 /// Discovery screen that wraps the camera detection functionality
 /// This integrates the existing YOLO object detection with the new navigation structure
@@ -242,20 +243,88 @@ class DiscoveryScreen extends ConsumerWidget {
 
 /// Wrapper for the existing camera detection screen content
 /// This allows us to reuse the existing YOLO detection logic within the new navigation structure
-class CameraDetectionContent extends StatelessWidget {
+class CameraDetectionContent extends StatefulWidget {
   const CameraDetectionContent({super.key});
 
   @override
+  State<CameraDetectionContent> createState() => _CameraDetectionContentState();
+}
+
+class _CameraDetectionContentState extends State<CameraDetectionContent> {
+  bool showCamera = false;
+  List<CameraDescription>? cameras;
+  bool isLoading = false;
+
+  Future<void> _initializeCameras() async {
+    setState(() {
+      isLoading = true;
+    });
+    try {
+      cameras = await availableCameras();
+    } catch (e) {
+      debugPrint('Error initializing cameras: $e');
+      cameras = null;
+    }
+    setState(() {
+      isLoading = false;
+    });
+  }
+
+  void _onStartDetection() async {
+    await _initializeCameras();
+    setState(() {
+      showCamera = true;
+    });
+  }
+
+  void _onCloseCamera() {
+    setState(() {
+      showCamera = false;
+    });
+  }
+
+  @override
   Widget build(BuildContext context) {
-    // Use the existing camera detection screen but remove its scaffold
-    // We'll need to extract the core detection logic into a widget
-    return const _CameraDetectionView();
+    if (showCamera) {
+      if (isLoading) {
+        return const Center(child: CircularProgressIndicator());
+      }
+      if (cameras == null || cameras!.isEmpty) {
+        return Center(child: Text('No cameras available'));
+      }
+      return Stack(
+        children: [
+          RealTimeObjectDetection(cameras: cameras!, onClose: _onCloseCamera),
+          Positioned(
+            top: 16,
+            right: 16,
+            child: IconButton(
+              onPressed: _onCloseCamera,
+              icon: const Icon(Icons.close),
+              style: IconButton.styleFrom(
+                backgroundColor: Colors.white,
+                foregroundColor: Colors.black,
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(16),
+                ),
+                elevation: 0,
+                shadowColor: Colors.transparent,
+                splashFactory: NoSplash.splashFactory,
+              ),
+            ),
+          ),
+        ],
+      );
+    }
+    // Show intro UI
+    return _CameraDetectionView(onStartDetection: _onStartDetection);
   }
 }
 
 /// Camera detection view with navigation to full-screen detection
 class _CameraDetectionView extends StatelessWidget {
-  const _CameraDetectionView();
+  final VoidCallback? onStartDetection;
+  const _CameraDetectionView({this.onStartDetection});
 
   @override
   Widget build(BuildContext context) {
@@ -311,13 +380,7 @@ class _CameraDetectionView extends StatelessWidget {
             ),
             const SizedBox(height: 20),
             ElevatedButton.icon(
-              onPressed: () {
-                Navigator.of(context).push(
-                  MaterialPageRoute(
-                    builder: (context) => const DetectionWrapperScreen(),
-                  ),
-                );
-              },
+              onPressed: onStartDetection,
               icon: const Icon(Icons.center_focus_strong_outlined),
               label: const Text('Start Detection'),
               style: ElevatedButton.styleFrom(
