@@ -7,6 +7,7 @@ class WordFlashcard extends StatefulWidget {
   final double confidence;
   final VoidCallback onSave;
   final VoidCallback onClose;
+  final VoidCallback? onNavigateToMyWords;
   final bool isAlreadySaved;
 
   const WordFlashcard({
@@ -16,6 +17,7 @@ class WordFlashcard extends StatefulWidget {
     required this.confidence,
     required this.onSave,
     required this.onClose,
+    this.onNavigateToMyWords,
     this.isAlreadySaved = false,
   });
 
@@ -314,6 +316,8 @@ class _WordFlashcardState extends State<WordFlashcard>
                   onPressed: widget.isAlreadySaved ? null : () {
                     widget.onSave();
                     _closeFlashcard();
+                    // Navigate to My Words screen after saving
+                    widget.onNavigateToMyWords?.call();
                   },
                   icon: Icon(
                     widget.isAlreadySaved ? Icons.bookmark : Icons.bookmark_add,

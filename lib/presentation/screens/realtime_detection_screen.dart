@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:camera/camera.dart';
 import 'package:tflite_v2/tflite_v2.dart';
+import 'package:go_router/go_router.dart';
 import '../providers/saved_words_provider.dart';
 import '../widgets/detection/word_flashcard.dart';
 import '../../domain/entities/saved_word.dart';
@@ -272,6 +273,7 @@ class _RealTimeObjectDetectionState extends ConsumerState<RealTimeObjectDetectio
         confidence: confidence,
         onSave: () => _saveWord(word, definition, confidence),
         onClose: _resumeDetection,
+        onNavigateToMyWords: () => _navigateToMyWords(),
         isAlreadySaved: false,
       ),
     );
@@ -318,6 +320,12 @@ class _RealTimeObjectDetectionState extends ConsumerState<RealTimeObjectDetectio
       isDetectionPaused = false;
       isShowingFlashcard = false;
     });
+  }
+
+  void _navigateToMyWords() {
+    if (mounted) {
+      context.go('/review');
+    }
   }
 
 
